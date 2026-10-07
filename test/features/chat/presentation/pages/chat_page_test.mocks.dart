@@ -84,14 +84,23 @@ class MockChatRepository extends _i1.Mock implements _i2.ChatRepository {
   @override
   _i3.Future<_i4.Either<_i5.Failure, _i7.Message>> sendMessage(
     String? peerId,
-    String? content,
-  ) =>
+    String? content, {
+    String? peerName = 'Unknown',
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#sendMessage, [peerId, content]),
+            Invocation.method(
+              #sendMessage,
+              [peerId, content],
+              {#peerName: peerName},
+            ),
             returnValue: _i3.Future<_i4.Either<_i5.Failure, _i7.Message>>.value(
               _i6.dummyValue<_i4.Either<_i5.Failure, _i7.Message>>(
                 this,
-                Invocation.method(#sendMessage, [peerId, content]),
+                Invocation.method(
+                  #sendMessage,
+                  [peerId, content],
+                  {#peerName: peerName},
+                ),
               ),
             ),
           )
@@ -198,14 +207,19 @@ class MockSendMessage extends _i1.Mock implements _i9.SendMessage {
   @override
   _i3.Future<_i4.Either<_i5.Failure, _i7.Message>> call(
     String? peerId,
-    String? content,
-  ) =>
+    String? content, {
+    String? peerName = 'Unknown',
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#call, [peerId, content]),
+            Invocation.method(#call, [peerId, content], {#peerName: peerName}),
             returnValue: _i3.Future<_i4.Either<_i5.Failure, _i7.Message>>.value(
               _i6.dummyValue<_i4.Either<_i5.Failure, _i7.Message>>(
                 this,
-                Invocation.method(#call, [peerId, content]),
+                Invocation.method(
+                  #call,
+                  [peerId, content],
+                  {#peerName: peerName},
+                ),
               ),
             ),
           )

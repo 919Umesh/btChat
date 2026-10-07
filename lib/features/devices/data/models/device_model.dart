@@ -5,5 +5,6 @@ class DeviceModel extends AppBluetoothDevice {
     required super.id,
     required super.name,
     required super.rssi,
+    super.isChatSupported = false,
   });
 }

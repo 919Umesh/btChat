@@ -44,9 +44,11 @@ class ChatController extends ChangeNotifier {
   StreamSubscription? _connSub;
   
   String _currentPeerId = '';
+  String _peerName = 'Unknown';
 
-  Future<void> init(String peerId) async {
+  Future<void> init(String peerId, {String peerName = 'Unknown'}) async {
     _currentPeerId = peerId;
+    _peerName = peerName;
     await loadMessages();
     
     _connSub?.cancel();
@@ -69,28 +71,38 @@ class ChatController extends ChangeNotifier {
     });
   }
   
+  bool _disposed = false;
+
+  void _safeNotify() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   Future<void> loadMessages() async {
     final result = await getMessages(_currentPeerId);
+    if (_disposed) return;
     result.fold(
       (f) => _error = f.message,
       (msgs) => _messages = msgs,
     );
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> connect(String peerId) async {
     _isConnecting = true;
     _error = null;
-    notifyListeners();
+    _safeNotify();
 
     final result = await connectToPeer(peerId);
+    if (_disposed) return;
     result.fold(
       (f) => _error = f.message,
       (_) {},
     );
     
     _isConnecting = false;
-    notifyListeners();
+    _safeNotify();
   }
   
   Future<void> disconnect() async {
@@ -100,7 +112,8 @@ class ChatController extends ChangeNotifier {
   Future<void> sendMsg(String text) async {
     if (text.trim().isEmpty) return;
     
-    final result = await sendMessage(_currentPeerId, text.trim());
+    final result = await sendMessage(_currentPeerId, text.trim(), peerName: _peerName);
+    if (_disposed) return;
     result.fold(
       (f) => _error = f.message,
       (msg) {
@@ -112,16 +125,18 @@ class ChatController extends ChangeNotifier {
         }
       }
     );
-    notifyListeners();
+    _safeNotify();
   }
   
   Future<void> _retryUnsent() async {
       await retryFailedMessages(_currentPeerId);
+      if (_disposed) return;
       await loadMessages();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _msgSub?.cancel();
     _connSub?.cancel();
     super.dispose();

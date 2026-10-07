@@ -12,6 +12,15 @@ void main() {
   late MockChatRepository mockRepo;
 
   setUp(() {
+    provideDummy<Either<Failure, Message>>(right(Message(
+      id: '0',
+      conversationId: '',
+      senderId: '',
+      content: '',
+      timestamp: DateTime.now(),
+      status: MessageStatus.sent,
+      isMine: true,
+    )));
     mockRepo = MockChatRepository();
   });
 

@@ -34,7 +34,7 @@ class DevicesController extends ChangeNotifier {
 
     _scanSub?.cancel();
     _scanSub = scanDevicesUseCase().listen((scannedDevices) {
-      _devices = scannedDevices;
+      _devices = scannedDevices.where((d) => d.isChatSupported).toList();
       _safeNotify();
     });
 

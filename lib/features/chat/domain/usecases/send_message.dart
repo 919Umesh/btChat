@@ -7,7 +7,7 @@ class SendMessage {
   final ChatRepository repository;
   SendMessage(this.repository);
 
-  Future<Either<Failure, Message>> call(String peerId, String content) {
-    return repository.sendMessage(peerId, content);
+  Future<Either<Failure, Message>> call(String peerId, String content, {String peerName = 'Unknown'}) {
+    return repository.sendMessage(peerId, content, peerName: peerName);
   }
 }

@@ -104,7 +104,7 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
     if (_writeCharacteristic == null) {
       throw Exception('Not connected or characteristic not found');
     }
-    String jsonStr = jsonEncode(payload) + '\n';
+    String jsonStr = '${jsonEncode(payload)}\n';
     List<int> bytes = utf8.encode(jsonStr);
     
     // Chunking for MTU (default ~20 bytes, but we request larger MTU usually. Let's do 20-byte chunks to be safe if MTU is small)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../domain/entities/message.dart';
 import '../../../../core/utils/date_extensions.dart';
 
@@ -11,64 +12,84 @@ class MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMe = message.isMine;
     final timeStr = message.timestamp.toChatTime();
-    
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     IconData? statusIcon;
-    Color statusColor = Colors.grey;
-    
+    Color statusColor = Colors.white70;
+
     if (isMe) {
       if (message.status == MessageStatus.sent) {
-         statusIcon = Icons.done_all;
-         statusColor = Colors.white70;
+        statusIcon = FontAwesomeIcons.checkDouble;
+        statusColor = Colors.white70;
       } else if (message.status == MessageStatus.failed) {
-         statusIcon = Icons.error_outline;
-         statusColor = Colors.red.shade200;
+        statusIcon = FontAwesomeIcons.circleExclamation;
+        statusColor = Colors.red.shade200;
       } else if (message.status == MessageStatus.sending) {
-         statusIcon = Icons.access_time;
-         statusColor = Colors.white70;
+        statusIcon = FontAwesomeIcons.clock;
+        statusColor = Colors.white54;
       }
     }
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: EdgeInsets.only(
+          top: 2,
+          bottom: 2,
+          left: isMe ? 60 : 0,
+          right: isMe ? 0 : 60,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isMe ? Theme.of(context).primaryColor : const Color(0xFFE1E8ED),
-          borderRadius: BorderRadius.circular(20).copyWith(
-            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
-            bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
+          color: isMe
+              ? theme.primaryColor
+              : (isDark ? const Color(0xFF253341) : const Color(0xFFF0F3F5)),
+          borderRadius: BorderRadius.circular(18).copyWith(
+            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
+            bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              message.content, 
+              message.content,
               style: TextStyle(
-                fontSize: 16, 
-                color: isMe ? Colors.white : Colors.black87,
-              )
+                fontSize: 15,
+                height: 1.4,
+                color: isMe
+                    ? Colors.white
+                    : (isDark ? Colors.white : const Color(0xFF14171A)),
+              ),
             ),
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  timeStr, 
+                  timeStr,
                   style: TextStyle(
-                    fontSize: 11, 
-                    color: isMe ? Colors.white70 : Colors.black54,
-                  )
+                    fontSize: 10,
+                    color: isMe
+                        ? Colors.white60
+                        : (isDark ? Colors.grey.shade500 : Colors.black38),
+                  ),
                 ),
                 if (isMe && statusIcon != null) ...[
-                   const SizedBox(width: 4),
-                   Icon(statusIcon, size: 12, color: statusColor),
-                ]
+                  const SizedBox(width: 4),
+                  FaIcon(statusIcon, size: 10, color: statusColor),
+                ],
               ],
-            )
+            ),
           ],
         ),
       ),

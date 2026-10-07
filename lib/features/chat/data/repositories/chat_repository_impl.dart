@@ -1,3 +1,4 @@
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/errors/failures.dart';
@@ -37,7 +38,7 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<Either<Failure, Message>> sendMessage(String peerId, String content) async {
+  Future<Either<Failure, Message>> sendMessage(String peerId, String content, {String peerName = 'Unknown'}) async {
     try {
       final msg = MessageModel(
         id: _uuid.v4(),
@@ -51,7 +52,7 @@ class ChatRepositoryImpl implements ChatRepository {
       
       // Save locally first
       await localDb.saveMessage(msg);
-      await _updateConversation(peerId, content, msg.timestamp);
+      await _updateConversation(peerId, content, msg.timestamp, peerName: peerName);
       
       // Try send
       try {
@@ -76,13 +77,31 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   Future<void> _updateConversation(String peerId, String content, DateTime time, {String peerName = 'Unknown'}) async {
-     await localDb.saveConversation(ConversationModel(
-        id: peerId,
-        peerId: peerId,
-        peerName: peerName,
-        lastMessage: content,
-        lastMessageAt: time,
-      ));
+    // Preserve existing peer name if already stored (e.g. when receiving a message)
+    String resolvedName = peerName;
+    if (peerName == 'Unknown' || peerName.isEmpty || peerName == 'Unknown Device') {
+      final existing = await localDb.getConversations();
+      final match = existing.where((c) => c.peerId == peerId).firstOrNull;
+      if (match != null && match.peerName.isNotEmpty && match.peerName != 'Unknown' && match.peerName != 'Unknown Device') {
+        resolvedName = match.peerName;
+      } else {
+        try {
+          final device = BluetoothDevice.fromId(peerId);
+          if (device.advName.isNotEmpty) {
+            resolvedName = device.advName;
+          } else if (device.platformName.isNotEmpty) {
+            resolvedName = device.platformName;
+          }
+        } catch (_) {}
+      }
+    }
+    await localDb.saveConversation(ConversationModel(
+      id: peerId,
+      peerId: peerId,
+      peerName: resolvedName,
+      lastMessage: content,
+      lastMessageAt: time,
+    ));
   }
 
   @override
@@ -99,7 +118,31 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<Either<Failure, List<Conversation>>> getConversations() async {
     try {
       final convs = await localDb.getConversations();
-      return right(convs);
+      final List<Conversation> resolvedConvs = [];
+      for (final conv in convs) {
+        if (conv.peerName == 'Unknown' || conv.peerName.isEmpty || conv.peerName == 'Unknown Device') {
+          try {
+            final device = BluetoothDevice.fromId(conv.peerId);
+            final name = device.advName.isNotEmpty
+                ? device.advName
+                : (device.platformName.isNotEmpty ? device.platformName : '');
+            if (name.isNotEmpty) {
+              final updated = ConversationModel(
+                id: conv.id,
+                peerId: conv.peerId,
+                peerName: name,
+                lastMessage: conv.lastMessage,
+                lastMessageAt: conv.lastMessageAt,
+              );
+              await localDb.saveConversation(updated);
+              resolvedConvs.add(updated);
+              continue;
+            }
+          } catch (_) {}
+        }
+        resolvedConvs.add(conv);
+      }
+      return right(resolvedConvs);
     } catch (e) {
       return left(DatabaseFailure(e.toString()));
     }

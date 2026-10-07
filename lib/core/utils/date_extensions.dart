@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 extension DateTimeFormatting on DateTime {
   String toChatTime() {
     final hour = this.hour > 12 ? this.hour - 12 : (this.hour == 0 ? 12 : this.hour);

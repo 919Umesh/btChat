@@ -6,7 +6,7 @@ import '../entities/conversation.dart';
 abstract class ChatRepository {
   Future<Either<Failure, void>> connectToPeer(String peerId);
   Future<Either<Failure, void>> disconnect();
-  Future<Either<Failure, Message>> sendMessage(String peerId, String content);
+  Future<Either<Failure, Message>> sendMessage(String peerId, String content, {String peerName = 'Unknown'});
   Future<Either<Failure, List<Message>>> getMessages(String conversationId);
   Future<Either<Failure, List<Conversation>>> getConversations();
   Stream<Message> receiveMessages();

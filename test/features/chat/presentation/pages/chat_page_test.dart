@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:fpdart/fpdart.dart';
@@ -15,7 +14,7 @@ import 'package:chat_l/features/chat/domain/usecases/disconnect.dart';
 import 'package:chat_l/features/chat/domain/usecases/receive_messages_stream.dart';
 import 'package:chat_l/features/chat/domain/usecases/connection_state_stream.dart';
 import 'package:chat_l/features/chat/domain/usecases/retry_failed_messages.dart';
-import 'package:chat_l/core/di/injection.dart' as di;
+import 'package:chat_l/core/errors/failures.dart';
 import 'package:get_it/get_it.dart';
 import 'chat_page_test.mocks.dart';
 
@@ -30,7 +29,6 @@ import 'chat_page_test.mocks.dart';
   RetryFailedMessages
 ])
 void main() {
-  late MockChatRepository mockRepo;
   late ChatController controller;
 
   late MockSendMessage mockSendMessage;
@@ -41,8 +39,19 @@ void main() {
   late MockConnectionStateStream mockConnectionStateStream;
   late MockRetryFailedMessages mockRetryFailedMessages;
 
-  setUp(() {
-    mockRepo = MockChatRepository();
+  setUp(() async {
+    await GetIt.instance.reset();
+    provideDummy<Either<Failure, List<Message>>>(right(<Message>[]));
+    provideDummy<Either<Failure, Message>>(right(Message(
+      id: '0',
+      conversationId: '',
+      senderId: '',
+      content: '',
+      timestamp: DateTime.now(),
+      status: MessageStatus.sent,
+      isMine: true,
+    )));
+    provideDummy<Either<Failure, void>>(right(null));
     mockSendMessage = MockSendMessage();
     mockGetMessages = MockGetMessages();
     mockConnectToPeer = MockConnectToPeer();
@@ -67,12 +76,11 @@ void main() {
       retryFailedMessages: mockRetryFailedMessages,
     );
 
-    GetIt.instance.reset();
     GetIt.instance.registerFactory<ChatController>(() => controller);
   });
 
   Widget createWidgetUnderTest() {
-    return MaterialApp(
+    return const MaterialApp(
       home: ChatPage(peerId: 'peer1', peerName: 'Alice'),
     );
   }
@@ -87,7 +95,7 @@ void main() {
       isMine: true,
     );
 
-    when(mockSendMessage(any, any)).thenAnswer((_) async => right(tMessage));
+    when(mockSendMessage(any, any, peerName: anyNamed('peerName'))).thenAnswer((_) async => right(tMessage));
 
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
@@ -96,12 +104,13 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'test message');
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('send')));
     
     // allow microtasks to finish
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    verify(mockSendMessage('peer1', 'test message')).called(1);
+    verify(mockSendMessage('peer1', 'test message', peerName: 'Alice')).called(1);
     
     await tester.pump();
     

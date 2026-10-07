@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -20,12 +21,13 @@ class _PermissionsPageState extends State<PermissionsPage> {
   }
 
   Future<void> _checkPermissions() async {
-    // Check BLE support
+    setState(() => _isLoading = true);
+
     if (await FlutterBluePlus.isSupported == false) {
-       _showError('Bluetooth not supported by this device');
-       return;
+      _showError('Bluetooth not supported by this device');
+      return;
     }
-    
+
     Map<Permission, PermissionStatus> statuses = await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
@@ -33,23 +35,21 @@ class _PermissionsPageState extends State<PermissionsPage> {
     ].request();
 
     bool allGranted = statuses.values.every((status) => status.isGranted);
-    
+
     if (allGranted) {
-       // Check if BT is on
-       final state = await FlutterBluePlus.adapterState.first;
-       if (state == BluetoothAdapterState.on) {
+      final state = await FlutterBluePlus.adapterState.first;
+      if (state == BluetoothAdapterState.on) {
+        if (mounted) context.go('/');
+      } else {
+        try {
+          await FlutterBluePlus.turnOn();
           if (mounted) context.go('/');
-       } else {
-          // Ask to turn on BT
-          try {
-             await FlutterBluePlus.turnOn();
-             if (mounted) context.go('/');
-          } catch (e) {
-             _showError('Please turn on Bluetooth');
-          }
-       }
+        } catch (e) {
+          _showError('Please turn on Bluetooth');
+        }
+      }
     } else {
-       setState(() { _isLoading = false; });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -61,35 +61,71 @@ class _PermissionsPageState extends State<PermissionsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       body: Center(
-        child: _isLoading 
-          ? const CircularProgressIndicator()
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.bluetooth_disabled, size: 80),
-                const SizedBox(height: 20),
-                const Text('Permissions Required', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'BT Chat needs Bluetooth and Location permissions to discover and connect to nearby peers.',
-                    textAlign: TextAlign.center,
+        child: _isLoading
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: theme.primaryColor),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Checking permissions…',
+                    style: TextStyle(color: Colors.grey.shade500),
                   ),
+                ],
+              )
+            : Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: FaIcon(
+                          FontAwesomeIcons.bluetoothB,
+                          size: 48,
+                          color: theme.primaryColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Permissions Required',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'BT Chat needs Bluetooth and Location permissions to discover and connect to nearby peers.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: openAppSettings,
+                        icon: const FaIcon(FontAwesomeIcons.gear, size: 14),
+                        label: const Text('Open Settings'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: _checkPermissions,
+                      icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 13),
+                      label: const Text('Retry'),
+                    ),
+                  ],
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                     openAppSettings();
-                  },
-                  child: const Text('Open Settings'),
-                ),
-                TextButton(
-                  onPressed: _checkPermissions,
-                  child: const Text('Retry'),
-                )
-              ],
-            ),
+              ),
       ),
     );
   }
