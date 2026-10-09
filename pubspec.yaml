@@ -43,7 +43,7 @@ dependencies:
   fpdart: ^1.2.0
   uuid: ^4.6.0
   permission_handler: ^13.0.0
-  font_awesome_flutter: ^10.8.0
+  font_awesome_flutter: ^11.0.0
 
 dependency_overrides:
   permission_handler_android: 13.0.0

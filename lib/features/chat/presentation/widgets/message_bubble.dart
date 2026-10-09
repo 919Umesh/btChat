@@ -15,7 +15,7 @@ class MessageBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    IconData? statusIcon;
+    FaIconData? statusIcon;
     Color statusColor = Colors.white70;
 
     if (isMe) {
