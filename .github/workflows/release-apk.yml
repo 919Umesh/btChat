@@ -54,7 +54,9 @@ jobs:
 
       - name: Read app version
         id: version
-        run: echo "version=$(sed -n 's/^version: *//p' pubspec.yaml | cut -d '+' -f 1)" >> "$GITHUB_OUTPUT"
+        run: |
+          VERSION=$(sed -n 's/^version: *//p' pubspec.yaml | cut -d '+' -f 1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
