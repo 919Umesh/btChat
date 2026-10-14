@@ -109,6 +109,9 @@ Future<void> init() async {
   sl.registerFactory(() => ConversationController(
     getConversations: sl(),
     deleteConversationUseCase: sl(),
+    receiveMessagesStream: sl(),
+    scanDevices: sl(),
+    stopScan: sl(),
   ));
   sl.registerFactory(() => DevicesController(
     scanDevicesUseCase: sl(),

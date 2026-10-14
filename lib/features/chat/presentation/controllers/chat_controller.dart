@@ -17,7 +17,7 @@ class ChatController extends ChangeNotifier {
   final ReceiveMessagesStream receiveMessagesStream;
   final ConnectionStateStream connectionStateStream;
   final RetryFailedMessages retryFailedMessages;
-  
+
   ChatController({
     required this.sendMessage,
     required this.getMessages,
@@ -36,41 +36,43 @@ class ChatController extends ChangeNotifier {
 
   bool _isConnecting = false;
   bool get isConnecting => _isConnecting;
-  
+
   String? _error;
   String? get error => _error;
 
   StreamSubscription? _msgSub;
   StreamSubscription? _connSub;
-  
+
   String _currentPeerId = '';
+  String _conversationId = '';
   String _peerName = 'Unknown';
 
   Future<void> init(String peerId, {String peerName = 'Unknown'}) async {
     _currentPeerId = peerId;
     _peerName = peerName;
+    _conversationId = _stableConversationId(peerId, peerName);
     await loadMessages();
-    
+
     _connSub?.cancel();
     _connSub = connectionStateStream().listen((connected) {
       _isConnected = connected;
       notifyListeners();
       if (connected) {
-         _retryUnsent();
+        _retryUnsent();
       }
     });
 
     _msgSub?.cancel();
     _msgSub = receiveMessagesStream().listen((msg) {
-      if (msg.conversationId == _currentPeerId) {
-         if (!_messages.any((m) => m.id == msg.id)) {
-             _messages.add(msg);
-             notifyListeners();
-         }
+      if (msg.conversationId == _conversationId) {
+        if (!_messages.any((m) => m.id == msg.id)) {
+          _messages.add(msg);
+          notifyListeners();
+        }
       }
     });
   }
-  
+
   bool _disposed = false;
 
   void _safeNotify() {
@@ -80,13 +82,20 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<void> loadMessages() async {
-    final result = await getMessages(_currentPeerId);
+    final result = await getMessages(_conversationId);
     if (_disposed) return;
-    result.fold(
-      (f) => _error = f.message,
-      (msgs) => _messages = msgs,
-    );
+    result.fold((f) => _error = f.message, (msgs) => _messages = msgs);
     _safeNotify();
+  }
+
+  String _stableConversationId(String peerId, String peerName) {
+    final normalizedName = peerName.trim().toLowerCase();
+    if (normalizedName.isNotEmpty &&
+        normalizedName != 'unknown' &&
+        normalizedName != 'unknown device') {
+      return 'name:$normalizedName';
+    }
+    return peerId;
   }
 
   Future<void> connect(String peerId) async {
@@ -96,42 +105,40 @@ class ChatController extends ChangeNotifier {
 
     final result = await connectToPeer(peerId);
     if (_disposed) return;
-    result.fold(
-      (f) => _error = f.message,
-      (_) {},
-    );
-    
+    result.fold((f) => _error = f.message, (_) {});
+
     _isConnecting = false;
     _safeNotify();
   }
-  
+
   Future<void> disconnect() async {
-     await disconnectPeer();
+    await disconnectPeer();
   }
 
   Future<void> sendMsg(String text) async {
     if (text.trim().isEmpty) return;
-    
-    final result = await sendMessage(_currentPeerId, text.trim(), peerName: _peerName);
-    if (_disposed) return;
-    result.fold(
-      (f) => _error = f.message,
-      (msg) {
-        final idx = _messages.indexWhere((m) => m.id == msg.id);
-        if (idx >= 0) {
-           _messages[idx] = msg;
-        } else {
-           _messages.add(msg);
-        }
-      }
+
+    final result = await sendMessage(
+      _currentPeerId,
+      text.trim(),
+      peerName: _peerName,
     );
+    if (_disposed) return;
+    result.fold((f) => _error = f.message, (msg) {
+      final idx = _messages.indexWhere((m) => m.id == msg.id);
+      if (idx >= 0) {
+        _messages[idx] = msg;
+      } else {
+        _messages.add(msg);
+      }
+    });
     _safeNotify();
   }
-  
+
   Future<void> _retryUnsent() async {
-      await retryFailedMessages(_currentPeerId);
-      if (_disposed) return;
-      await loadMessages();
+    await retryFailedMessages(_currentPeerId);
+    if (_disposed) return;
+    await loadMessages();
   }
 
   @override

@@ -26,6 +26,7 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
 
   final _receiveController = StreamController<Map<String, dynamic>>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
+  bool _isConnected = false;
   
   String _messageBuffer = '';
 
@@ -51,7 +52,10 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
   Stream<Map<String, dynamic>> get receiveStream => _receiveController.stream;
   
   @override
-  Stream<bool> get connectionStateStream => _connectionController.stream;
+  Stream<bool> get connectionStateStream async* {
+    yield _isConnected;
+    yield* _connectionController.stream;
+  }
 
   @override
   Future<void> connect(String deviceId) async {
@@ -61,8 +65,10 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
     _connectionSub?.cancel();
     _connectionSub = _device!.connectionState.listen((state) {
       if (state == BluetoothConnectionState.connected) {
+        _isConnected = true;
         _connectionController.add(true);
       } else if (state == BluetoothConnectionState.disconnected) {
+        _isConnected = false;
         _connectionController.add(false);
       }
     });
@@ -125,6 +131,7 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
     _device = null;
     _messageBuffer = '';
     _connectionController.add(false);
+    _isConnected = false;
   }
 
   @override

@@ -38,7 +38,7 @@ class MessageModel extends Message {
   factory MessageModel.fromJsonPayload(Map<String, dynamic> json) {
     return MessageModel(
       id: json['id'],
-      conversationId: json['senderId'], // The peer is the sender
+      conversationId: json['conversationId'] ?? json['senderId'],
       senderId: json['senderId'],
       content: json['text'],
       timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp']),
@@ -51,6 +51,7 @@ class MessageModel extends Message {
     return {
       'id': id,
       'senderId': senderId,
+      'conversationId': conversationId,
       'text': content,
       'timestamp': timestamp.millisecondsSinceEpoch,
     };

@@ -38,36 +38,60 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<Either<Failure, Message>> sendMessage(String peerId, String content, {String peerName = 'Unknown'}) async {
+  Future<Either<Failure, Message>> sendMessage(
+    String peerId,
+    String content, {
+    String peerName = 'Unknown',
+  }) async {
     try {
+      final conversationId = _conversationId(peerId, peerName);
       final msg = MessageModel(
         id: _uuid.v4(),
-        conversationId: peerId,
+        conversationId: conversationId,
         senderId: 'me', // Ideally get actual device id/name
         content: content,
         timestamp: DateTime.now(),
         status: MessageStatus.sending,
         isMine: true,
       );
-      
+
       // Save locally first
       await localDb.saveMessage(msg);
-      await _updateConversation(peerId, content, msg.timestamp, peerName: peerName);
-      
+      await _updateConversation(
+        peerId,
+        content,
+        msg.timestamp,
+        peerName: peerName,
+        conversationId: conversationId,
+      );
+
       // Try send
       try {
-        await bluetoothChat.sendMessage(msg.toJsonPayload());
+        await bluetoothChat.sendMessage({
+          ...msg.toJsonPayload(),
+          'peerName': peerName,
+        });
         final sentMsg = MessageModel(
-          id: msg.id, conversationId: msg.conversationId, senderId: msg.senderId,
-          content: msg.content, timestamp: msg.timestamp, status: MessageStatus.sent, isMine: true,
+          id: msg.id,
+          conversationId: msg.conversationId,
+          senderId: msg.senderId,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          status: MessageStatus.sent,
+          isMine: true,
         );
         await localDb.updateMessageStatus(msg.id, 'sent');
         return right(sentMsg);
       } catch (e) {
         await localDb.updateMessageStatus(msg.id, 'failed');
         final failedMsg = MessageModel(
-          id: msg.id, conversationId: msg.conversationId, senderId: msg.senderId,
-          content: msg.content, timestamp: msg.timestamp, status: MessageStatus.failed, isMine: true,
+          id: msg.id,
+          conversationId: msg.conversationId,
+          senderId: msg.senderId,
+          content: msg.content,
+          timestamp: msg.timestamp,
+          status: MessageStatus.failed,
+          isMine: true,
         );
         return right(failedMsg);
       }
@@ -76,13 +100,24 @@ class ChatRepositoryImpl implements ChatRepository {
     }
   }
 
-  Future<void> _updateConversation(String peerId, String content, DateTime time, {String peerName = 'Unknown'}) async {
+  Future<void> _updateConversation(
+    String peerId,
+    String content,
+    DateTime time, {
+    String peerName = 'Unknown',
+    String? conversationId,
+  }) async {
     // Preserve existing peer name if already stored (e.g. when receiving a message)
     String resolvedName = peerName;
-    if (peerName == 'Unknown' || peerName.isEmpty || peerName == 'Unknown Device') {
+    if (peerName == 'Unknown' ||
+        peerName.isEmpty ||
+        peerName == 'Unknown Device') {
       final existing = await localDb.getConversations();
       final match = existing.where((c) => c.peerId == peerId).firstOrNull;
-      if (match != null && match.peerName.isNotEmpty && match.peerName != 'Unknown' && match.peerName != 'Unknown Device') {
+      if (match != null &&
+          match.peerName.isNotEmpty &&
+          match.peerName != 'Unknown' &&
+          match.peerName != 'Unknown Device') {
         resolvedName = match.peerName;
       } else {
         try {
@@ -95,17 +130,31 @@ class ChatRepositoryImpl implements ChatRepository {
         } catch (_) {}
       }
     }
-    await localDb.saveConversation(ConversationModel(
-      id: peerId,
-      peerId: peerId,
-      peerName: resolvedName,
-      lastMessage: content,
-      lastMessageAt: time,
-    ));
+    await localDb.saveConversation(
+      ConversationModel(
+        id: conversationId ?? _conversationId(peerId, peerName),
+        peerId: peerId,
+        peerName: resolvedName,
+        lastMessage: content,
+        lastMessageAt: time,
+      ),
+    );
+  }
+
+  String _conversationId(String peerId, String peerName) {
+    final normalizedName = peerName.trim().toLowerCase();
+    if (normalizedName.isNotEmpty &&
+        normalizedName != 'unknown' &&
+        normalizedName != 'unknown device') {
+      return 'name:$normalizedName';
+    }
+    return peerId;
   }
 
   @override
-  Future<Either<Failure, List<Message>>> getMessages(String conversationId) async {
+  Future<Either<Failure, List<Message>>> getMessages(
+    String conversationId,
+  ) async {
     try {
       final messages = await localDb.getMessages(conversationId);
       return right(messages);
@@ -120,7 +169,9 @@ class ChatRepositoryImpl implements ChatRepository {
       final convs = await localDb.getConversations();
       final List<Conversation> resolvedConvs = [];
       for (final conv in convs) {
-        if (conv.peerName == 'Unknown' || conv.peerName.isEmpty || conv.peerName == 'Unknown Device') {
+        if (conv.peerName == 'Unknown' ||
+            conv.peerName.isEmpty ||
+            conv.peerName == 'Unknown Device') {
           try {
             final device = BluetoothDevice.fromId(conv.peerId);
             final name = device.advName.isNotEmpty
@@ -142,7 +193,19 @@ class ChatRepositoryImpl implements ChatRepository {
         }
         resolvedConvs.add(conv);
       }
-      return right(resolvedConvs);
+      final deduplicated = <String, Conversation>{};
+      for (final conversation in resolvedConvs) {
+        final key = _conversationId(conversation.peerId, conversation.peerName);
+        final previous = deduplicated[key];
+        if (previous == null ||
+            conversation.lastMessageAt.isAfter(previous.lastMessageAt)) {
+          deduplicated[key] = conversation;
+        }
+      }
+      return right(
+        deduplicated.values.toList()
+          ..sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt)),
+      );
     } catch (e) {
       return left(DatabaseFailure(e.toString()));
     }
@@ -151,14 +214,30 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Stream<Message> receiveMessages() {
     return bluetoothChat.receiveStream.asyncMap((payload) async {
-      final msg = MessageModel.fromJsonPayload(payload);
-      
+      final peerName = payload['peerName'] as String? ?? 'Unknown';
+      final raw = MessageModel.fromJsonPayload(payload);
+      final msg = MessageModel(
+        id: raw.id,
+        conversationId: _conversationId(raw.senderId, peerName),
+        senderId: raw.senderId,
+        content: raw.content,
+        timestamp: raw.timestamp,
+        status: raw.status,
+        isMine: false,
+      );
+
       // Ensure deduplication
       try {
-         await localDb.saveMessage(msg);
-         await _updateConversation(msg.conversationId, msg.content, msg.timestamp);
+        await localDb.saveMessage(msg);
+        await _updateConversation(
+          msg.senderId,
+          msg.content,
+          msg.timestamp,
+          peerName: peerName,
+          conversationId: msg.conversationId,
+        );
       } catch (e) {
-         // Ignore if already exists
+        // Ignore if already exists
       }
       return msg;
     });
@@ -168,7 +247,9 @@ class ChatRepositoryImpl implements ChatRepository {
   Stream<bool> connectionState() => bluetoothChat.connectionStateStream;
 
   @override
-  Future<Either<Failure, void>> deleteConversation(String conversationId) async {
+  Future<Either<Failure, void>> deleteConversation(
+    String conversationId,
+  ) async {
     try {
       await localDb.deleteConversation(conversationId);
       return right(null);
@@ -176,22 +257,24 @@ class ChatRepositoryImpl implements ChatRepository {
       return left(DatabaseFailure(e.toString()));
     }
   }
-  
+
   @override
-  Future<Either<Failure, void>> retryFailedMessages(String conversationId) async {
-      try {
-        final unsent = await localDb.getUnsentMessages(conversationId);
-        for (var msg in unsent) {
-            try {
-               await bluetoothChat.sendMessage(msg.toJsonPayload());
-               await localDb.updateMessageStatus(msg.id, 'sent');
-            } catch(e) {
-               await localDb.updateMessageStatus(msg.id, 'failed');
-            }
+  Future<Either<Failure, void>> retryFailedMessages(
+    String conversationId,
+  ) async {
+    try {
+      final unsent = await localDb.getUnsentMessages(conversationId);
+      for (var msg in unsent) {
+        try {
+          await bluetoothChat.sendMessage(msg.toJsonPayload());
+          await localDb.updateMessageStatus(msg.id, 'sent');
+        } catch (e) {
+          await localDb.updateMessageStatus(msg.id, 'failed');
         }
-        return right(null);
-      } catch(e) {
-         return left(DatabaseFailure(e.toString()));
       }
+      return right(null);
+    } catch (e) {
+      return left(DatabaseFailure(e.toString()));
+    }
   }
 }
