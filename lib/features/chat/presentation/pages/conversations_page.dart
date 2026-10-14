@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../controllers/conversation_controller.dart';
+import '../../data/datasources/ble_peripheral_datasource.dart';
 import '../../domain/entities/conversation.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/date_extensions.dart';
@@ -28,6 +29,7 @@ class _ConversationsPageState extends State<ConversationsPage>
     super.initState();
     _controller = sl<ConversationController>();
     _controller.loadConversations();
+    sl<BlePeripheralDataSource>().startAdvertising();
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });

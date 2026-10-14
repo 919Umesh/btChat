@@ -4,6 +4,7 @@ import 'package:path/path.dart';
 import '../constants/app_constants.dart';
 import '../../features/chat/data/datasources/local_db_datasource.dart';
 import '../../features/chat/data/datasources/bluetooth_chat_datasource.dart';
+import '../../features/chat/data/datasources/ble_peripheral_datasource.dart';
 import '../../features/chat/data/repositories/chat_repository_impl.dart';
 import '../../features/chat/domain/repositories/chat_repository.dart';
 import '../../features/chat/domain/usecases/send_message.dart';
@@ -65,9 +66,11 @@ Future<void> init() async {
 
   sl.registerLazySingleton<Database>(() => db);
 
+
   // Datasources
   sl.registerLazySingleton<LocalDbDataSource>(() => LocalDbDataSourceImpl(sl()));
-  sl.registerLazySingleton<BluetoothChatDataSource>(() => BluetoothChatDataSourceImpl());
+  sl.registerLazySingleton<BlePeripheralDataSource>(() => BlePeripheralDataSourceImpl());
+  sl.registerLazySingleton<BluetoothChatDataSource>(() => BluetoothChatDataSourceImpl(peripheral: sl()));
   sl.registerLazySingleton<BluetoothDiscoveryDataSource>(() => BluetoothDiscoveryDataSourceImpl());
 
   // Repositories

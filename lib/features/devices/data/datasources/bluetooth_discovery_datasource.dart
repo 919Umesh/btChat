@@ -9,10 +9,11 @@ abstract class BluetoothDiscoveryDataSource {
 
 class BluetoothDiscoveryDataSourceImpl implements BluetoothDiscoveryDataSource {
   @override
-  Stream<List<DeviceModel>> scanDevices() {
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
-    
-    return FlutterBluePlus.scanResults.map((results) {
+  Stream<List<DeviceModel>> scanDevices() async* {
+    await FlutterBluePlus.stopScan();
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+
+    yield* FlutterBluePlus.scanResults.map((results) {
       return results.map((r) {
         final isChat = r.advertisementData.serviceUuids.any((uuid) {
           final str = uuid.toString().toLowerCase();

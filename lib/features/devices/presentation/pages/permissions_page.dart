@@ -3,6 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import '../../../../core/di/injection.dart';
+import '../../../chat/data/datasources/ble_peripheral_datasource.dart';
 
 class PermissionsPage extends StatefulWidget {
   const PermissionsPage({super.key});
@@ -31,6 +33,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
     Map<Permission, PermissionStatus> statuses = await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
+      Permission.bluetoothAdvertise,
       Permission.location,
     ].request();
 
@@ -39,10 +42,12 @@ class _PermissionsPageState extends State<PermissionsPage> {
     if (allGranted) {
       final state = await FlutterBluePlus.adapterState.first;
       if (state == BluetoothAdapterState.on) {
+        await sl<BlePeripheralDataSource>().startAdvertising();
         if (mounted) context.go('/');
       } else {
         try {
           await FlutterBluePlus.turnOn();
+          await sl<BlePeripheralDataSource>().startAdvertising();
           if (mounted) context.go('/');
         } catch (e) {
           _showError('Please turn on Bluetooth');
@@ -100,13 +105,19 @@ class _PermissionsPageState extends State<PermissionsPage> {
                     const SizedBox(height: 24),
                     const Text(
                       'Permissions Required',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'BT Chat needs Bluetooth and Location permissions to discover and connect to nearby peers.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        height: 1.5,
+                      ),
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
@@ -120,7 +131,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                     const SizedBox(height: 12),
                     TextButton.icon(
                       onPressed: _checkPermissions,
-                      icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 13),
+                      icon: const FaIcon(
+                        FontAwesomeIcons.arrowsRotate,
+                        size: 13,
+                      ),
                       label: const Text('Retry'),
                     ),
                   ],

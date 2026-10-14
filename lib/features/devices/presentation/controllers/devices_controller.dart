@@ -19,6 +19,9 @@ class DevicesController extends ChangeNotifier {
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
+  String? _error;
+  String? get error => _error;
+
   bool _disposed = false;
   StreamSubscription? _scanSub;
   Timer? _scanTimer;
@@ -27,14 +30,22 @@ class DevicesController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  void startScan() {
+  Future<void> startScan() async {
+    await _scanSub?.cancel();
+    _scanSub = null;
+    await stopScanUseCase();
+
     _isScanning = true;
     _devices = [];
+    _error = null;
     _safeNotify();
 
-    _scanSub?.cancel();
     _scanSub = scanDevicesUseCase().listen((scannedDevices) {
       _devices = scannedDevices.where((d) => d.isChatSupported).toList();
+      _safeNotify();
+    }, onError: (Object error, StackTrace stackTrace) {
+      _error = 'Unable to scan for devices. Check Bluetooth and permissions.';
+      _isScanning = false;
       _safeNotify();
     });
 

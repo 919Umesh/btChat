@@ -87,7 +87,10 @@ class _DevicesPageState extends State<DevicesPage> {
                     const SizedBox(height: 6),
                     Text(
                       'Make sure Bluetooth is turned on',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -117,20 +120,32 @@ class _DevicesPageState extends State<DevicesPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'No devices found',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      Text(
+                        controller.error == null
+                            ? 'No devices found'
+                            : 'Scan could not start',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Make sure the other device has BT Chat open nearby.',
+                        controller.error ??
+                            'Make sure the other device has BT Chat open nearby.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: () => controller.startScan(),
-                        icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 14),
+                        icon: const FaIcon(
+                          FontAwesomeIcons.arrowsRotate,
+                          size: 14,
+                        ),
                         label: const Text('Scan again'),
                       ),
                     ],
@@ -153,8 +168,10 @@ class _DevicesPageState extends State<DevicesPage> {
                   final device = controller.devices[index];
 
                   return ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     leading: Container(
                       width: 44,
                       height: 44,
@@ -176,7 +193,10 @@ class _DevicesPageState extends State<DevicesPage> {
                     ),
                     subtitle: Text(
                       device.id,
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                      ),
                     ),
                     trailing: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
