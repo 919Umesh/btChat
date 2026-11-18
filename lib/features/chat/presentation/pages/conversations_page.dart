@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../controllers/conversation_controller.dart';
@@ -80,15 +80,15 @@ class _ConversationsPageState extends State<ConversationsPage>
               backgroundColor: Theme.of(
                 context,
               ).primaryColor.withValues(alpha: 0.15),
-              child: FaIcon(
-                FontAwesomeIcons.user,
+              child: PhosphorIcon(
+                PhosphorIconsRegular.user,
                 size: 34,
                 color: Theme.of(context).primaryColor,
               ),
             ),
             const SizedBox(height: 12),
             const Text(
-              'My Profile',
+              'Device Profile',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
@@ -99,8 +99,8 @@ class _ConversationsPageState extends State<ConversationsPage>
             const SizedBox(height: 24),
             const Divider(),
             ListTile(
-              leading: FaIcon(
-                FontAwesomeIcons.bluetooth,
+              leading: PhosphorIcon(
+                PhosphorIconsRegular.bluetooth,
                 color: Theme.of(context).primaryColor,
               ),
               title: const Text('BT Chat'),
@@ -120,7 +120,7 @@ class _ConversationsPageState extends State<ConversationsPage>
     if (_isSearching) {
       return AppBar(
         leading: IconButton(
-          icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+          icon: const PhosphorIcon(PhosphorIconsRegular.arrowLeft, size: 18),
           onPressed: _stopSearch,
         ),
         title: TextField(
@@ -137,7 +137,7 @@ class _ConversationsPageState extends State<ConversationsPage>
         actions: [
           if (_query.isNotEmpty)
             IconButton(
-              icon: const FaIcon(FontAwesomeIcons.xmark, size: 16),
+              icon: const PhosphorIcon(PhosphorIconsRegular.x, size: 16),
               tooltip: 'Clear',
               onPressed: () {
                 _searchController.clear();
@@ -149,15 +149,15 @@ class _ConversationsPageState extends State<ConversationsPage>
     }
 
     return AppBar(
-      title: const Text('Messages'),
+      title: const Text('BT Chat'),
       leading: GestureDetector(
         onTap: () => _showProfileSheet(context),
         child: Padding(
           padding: const EdgeInsets.all(10.0),
           child: CircleAvatar(
             backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
-            child: FaIcon(
-              FontAwesomeIcons.user,
+            child: PhosphorIcon(
+              PhosphorIconsRegular.user,
               color: theme.primaryColor,
               size: 16,
             ),
@@ -166,7 +166,10 @@ class _ConversationsPageState extends State<ConversationsPage>
       ),
       actions: [
         IconButton(
-          icon: const FaIcon(FontAwesomeIcons.magnifyingGlass, size: 17),
+          icon: const PhosphorIcon(
+            PhosphorIconsRegular.magnifyingGlass,
+            size: 17,
+          ),
           tooltip: 'Search',
           onPressed: _startSearch,
         ),
@@ -206,8 +209,8 @@ class _ConversationsPageState extends State<ConversationsPage>
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: FaIcon(
-                            FontAwesomeIcons.commentDots,
+                          child: PhosphorIcon(
+                            PhosphorIconsRegular.chatCircle,
                             size: 44,
                             color: Theme.of(
                               context,
@@ -246,8 +249,8 @@ class _ConversationsPageState extends State<ConversationsPage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    FaIcon(
-                      FontAwesomeIcons.magnifyingGlass,
+                    PhosphorIcon(
+                      PhosphorIconsRegular.magnifyingGlass,
                       size: 40,
                       color: Colors.grey.shade300,
                     ),
@@ -395,7 +398,11 @@ class _ConversationsPageState extends State<ConversationsPage>
                                     width: 7,
                                     height: 7,
                                     decoration: BoxDecoration(
-                                      color: controller.isPeerOnline(conv.peerName)
+                                      color:
+                                          controller.isPeerOnline(
+                                            conv.peerId,
+                                            conv.peerName,
+                                          )
                                           ? Colors.green
                                           : Colors.grey,
                                       shape: BoxShape.circle,
@@ -403,12 +410,19 @@ class _ConversationsPageState extends State<ConversationsPage>
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    controller.isPeerOnline(conv.peerName)
+                                    controller.isPeerOnline(
+                                          conv.peerId,
+                                          conv.peerName,
+                                        )
                                         ? 'Online'
                                         : 'Offline',
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: controller.isPeerOnline(conv.peerName)
+                                      color:
+                                          controller.isPeerOnline(
+                                            conv.peerId,
+                                            conv.peerName,
+                                          )
                                           ? Colors.green
                                           : Colors.grey.shade600,
                                     ),
@@ -445,7 +459,10 @@ class _ConversationsPageState extends State<ConversationsPage>
                     .push('/devices')
                     .then((_) => _controller.loadConversations()),
                 tooltip: 'New conversation',
-                child: const FaIcon(FontAwesomeIcons.bluetooth, size: 22),
+                child:  PhosphorIcon(
+                  PhosphorIconsRegular.plus,
+                  size: 22,
+                ),
               ),
       ),
     );

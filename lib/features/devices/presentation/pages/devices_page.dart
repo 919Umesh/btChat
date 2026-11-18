@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../controllers/devices_controller.dart';
@@ -39,7 +39,7 @@ class _DevicesPageState extends State<DevicesPage> {
         appBar: AppBar(
           title: const Text('Connect to a device'),
           leading: IconButton(
-            icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+            icon: const PhosphorIcon(PhosphorIconsRegular.arrowLeft, size: 18),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           actions: [
@@ -56,7 +56,10 @@ class _DevicesPageState extends State<DevicesPage> {
                   );
                 }
                 return IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 18),
+                  icon: const PhosphorIcon(
+                    PhosphorIconsRegular.arrowsClockwise,
+                    size: 18,
+                  ),
                   tooltip: 'Rescan',
                   onPressed: () => controller.startScan(),
                 );
@@ -112,8 +115,8 @@ class _DevicesPageState extends State<DevicesPage> {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: FaIcon(
-                            FontAwesomeIcons.bluetoothB,
+                          child: PhosphorIcon(
+                            PhosphorIconsRegular.bluetoothConnected,
                             size: 44,
                             color: theme.primaryColor.withValues(alpha: 0.4),
                           ),
@@ -142,8 +145,8 @@ class _DevicesPageState extends State<DevicesPage> {
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: () => controller.startScan(),
-                        icon: const FaIcon(
-                          FontAwesomeIcons.arrowsRotate,
+                        icon: const PhosphorIcon(
+                          PhosphorIconsRegular.arrowsClockwise,
                           size: 14,
                         ),
                         label: const Text('Scan again'),
@@ -180,8 +183,8 @@ class _DevicesPageState extends State<DevicesPage> {
                         shape: BoxShape.circle,
                       ),
                       child: Center(
-                        child: FaIcon(
-                          FontAwesomeIcons.commentDots,
+                        child: PhosphorIcon(
+                          PhosphorIconsRegular.chatCircle,
                           size: 19,
                           color: theme.primaryColor,
                         ),
@@ -202,8 +205,8 @@ class _DevicesPageState extends State<DevicesPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        FaIcon(
-                          FontAwesomeIcons.signal,
+                        PhosphorIcon(
+                          PhosphorIconsRegular.wifiHigh,
                           size: 13,
                           color: _rssiColor(device.rssi),
                         ),

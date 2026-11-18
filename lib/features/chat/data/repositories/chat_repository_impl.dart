@@ -44,11 +44,12 @@ class ChatRepositoryImpl implements ChatRepository {
     String peerName = 'Unknown',
   }) async {
     try {
+      peerName = await _resolvePeerName(peerId, peerName);
       final conversationId = _conversationId(peerId, peerName);
       final msg = MessageModel(
         id: _uuid.v4(),
         conversationId: conversationId,
-        senderId: 'me', // Ideally get actual device id/name
+        senderId: 'me',
         content: content,
         timestamp: DateTime.now(),
         status: MessageStatus.sending,
@@ -98,6 +99,30 @@ class ChatRepositoryImpl implements ChatRepository {
     } catch (e) {
       return left(DatabaseFailure(e.toString()));
     }
+  }
+
+  Future<String> _resolvePeerName(String peerId, String peerName) async {
+    if (peerName.trim().isNotEmpty &&
+        peerName != 'Unknown' &&
+        peerName != 'Unknown Device') {
+      return peerName;
+    }
+
+    final existing = await localDb.getConversations();
+    final match = existing.where((c) => c.peerId == peerId).firstOrNull;
+    if (match != null &&
+        match.peerName.isNotEmpty &&
+        match.peerName != 'Unknown' &&
+        match.peerName != 'Unknown Device') {
+      return match.peerName;
+    }
+
+    try {
+      final device = BluetoothDevice.fromId(peerId);
+      if (device.advName.isNotEmpty) return device.advName;
+      if (device.platformName.isNotEmpty) return device.platformName;
+    } catch (_) {}
+    return peerName;
   }
 
   Future<void> _updateConversation(
@@ -214,11 +239,16 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Stream<Message> receiveMessages() {
     return bluetoothChat.receiveStream.asyncMap((payload) async {
-      final peerName = payload['peerName'] as String? ?? 'Unknown';
       final raw = MessageModel.fromJsonPayload(payload);
+      final payloadName = payload['peerName'] as String?;
+      var peerName = await _resolvePeerName(
+        raw.senderId,
+        payloadName ?? 'Unknown',
+      );
+      final conversationId = _conversationId(raw.senderId, peerName);
       final msg = MessageModel(
         id: raw.id,
-        conversationId: _conversationId(raw.senderId, peerName),
+        conversationId: conversationId,
         senderId: raw.senderId,
         content: raw.content,
         timestamp: raw.timestamp,

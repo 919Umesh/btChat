@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -95,8 +95,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
                         shape: BoxShape.circle,
                       ),
                       child: Center(
-                        child: FaIcon(
-                          FontAwesomeIcons.bluetoothB,
+                        child: PhosphorIcon(
+                          PhosphorIconsRegular.bluetoothConnected,
                           size: 48,
                           color: theme.primaryColor,
                         ),
@@ -124,15 +124,18 @@ class _PermissionsPageState extends State<PermissionsPage> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: openAppSettings,
-                        icon: const FaIcon(FontAwesomeIcons.gear, size: 14),
+                        icon: const PhosphorIcon(
+                          PhosphorIconsRegular.gear,
+                          size: 14,
+                        ),
                         label: const Text('Open Settings'),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextButton.icon(
                       onPressed: _checkPermissions,
-                      icon: const FaIcon(
-                        FontAwesomeIcons.arrowsRotate,
+                      icon: const PhosphorIcon(
+                        PhosphorIconsRegular.arrowsClockwise,
                         size: 13,
                       ),
                       label: const Text('Retry'),

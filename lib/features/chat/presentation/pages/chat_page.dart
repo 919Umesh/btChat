@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/message_bubble.dart';
@@ -74,7 +74,7 @@ class _ChatPageState extends State<ChatPage> {
         appBar: AppBar(
           titleSpacing: 0,
           leading: IconButton(
-            icon: const FaIcon(FontAwesomeIcons.arrowLeft, size: 18),
+            icon: const PhosphorIcon(PhosphorIconsRegular.arrowLeft, size: 18),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           title: Row(
@@ -112,7 +112,10 @@ class _ChatPageState extends State<ChatPage> {
                 children: [
                   Text(
                     widget.peerName,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   Consumer<ChatController>(
                     builder: (context, controller, _) {
@@ -129,8 +132,8 @@ class _ChatPageState extends State<ChatPage> {
                               color: isConnected
                                   ? Colors.green
                                   : isConnecting
-                                      ? Colors.orange
-                                      : Colors.grey,
+                                  ? Colors.orange
+                                  : Colors.grey,
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -138,16 +141,16 @@ class _ChatPageState extends State<ChatPage> {
                             isConnecting
                                 ? 'Connecting...'
                                 : isConnected
-                                    ? 'Connected'
-                                    : 'Offline',
+                                ? 'Connected'
+                                : 'Offline',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.normal,
                               color: isConnected
                                   ? Colors.green
                                   : isConnecting
-                                      ? Colors.orange
-                                      : Colors.grey,
+                                  ? Colors.orange
+                                  : Colors.grey,
                             ),
                           ),
                         ],
@@ -164,13 +167,20 @@ class _ChatPageState extends State<ChatPage> {
                 if (controller.isConnected || controller.isConnecting) {
                   return IconButton(
                     tooltip: 'Disconnect',
-                    icon: FaIcon(FontAwesomeIcons.bluetoothB, size: 18, color: theme.primaryColor),
+                    icon: PhosphorIcon(
+                      PhosphorIconsRegular.bluetoothConnected,
+                      size: 18,
+                      color: theme.primaryColor,
+                    ),
                     onPressed: () => controller.disconnect(),
                   );
                 }
                 return IconButton(
                   tooltip: 'Connect',
-                  icon: const FaIcon(FontAwesomeIcons.bluetooth, size: 18),
+                  icon: const PhosphorIcon(
+                    PhosphorIconsRegular.bluetooth,
+                    size: 18,
+                  ),
                   onPressed: () => controller.connect(widget.peerId),
                 );
               },
@@ -180,7 +190,9 @@ class _ChatPageState extends State<ChatPage> {
         ),
         body: Consumer<ChatController>(
           builder: (context, controller, _) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _scrollToBottom(),
+            );
             return Column(
               children: [
                 // Error banner
@@ -188,15 +200,25 @@ class _ChatPageState extends State<ChatPage> {
                   Container(
                     color: Colors.redAccent,
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
-                        const FaIcon(FontAwesomeIcons.triangleExclamation, size: 14, color: Colors.white),
+                        const PhosphorIcon(
+                          PhosphorIconsRegular.warningCircle,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             controller.error!,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -210,8 +232,8 @@ class _ChatPageState extends State<ChatPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              FaIcon(
-                                FontAwesomeIcons.commentSlash,
+                              PhosphorIcon(
+                                PhosphorIconsRegular.chatSlash,
                                 size: 48,
                                 color: Colors.grey.shade300,
                               ),
@@ -227,14 +249,20 @@ class _ChatPageState extends State<ChatPage> {
                               const SizedBox(height: 6),
                               Text(
                                 'Say hello to ${widget.peerName}!',
-                                style: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey.shade400,
+                                ),
                               ),
                             ],
                           ),
                         )
                       : ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
                           itemCount: controller.messages.length,
                           itemBuilder: (context, index) {
                             final msg = controller.messages[index];
@@ -285,10 +313,14 @@ class _ChatPageState extends State<ChatPage> {
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 120),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF253341) : const Color(0xFFF5F8FA),
+                  color: isDark
+                      ? const Color(0xFF253341)
+                      : const Color(0xFFF5F8FA),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF38444D) : const Color(0xFFE1E8ED),
+                    color: isDark
+                        ? const Color(0xFF38444D)
+                        : const Color(0xFFE1E8ED),
                   ),
                 ),
                 child: TextField(
@@ -299,11 +331,16 @@ class _ChatPageState extends State<ChatPage> {
                   decoration: InputDecoration(
                     hintText: 'Message ${widget.peerName}…',
                     hintStyle: TextStyle(
-                      color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                      color: isDark
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade400,
                       fontSize: 15,
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                   ),
                   onSubmitted: (_) => _sendMessage(),
                 ),
@@ -313,7 +350,8 @@ class _ChatPageState extends State<ChatPage> {
             // Send / mic button
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+              transitionBuilder: (child, anim) =>
+                  ScaleTransition(scale: anim, child: child),
               child: _showSendButton
                   ? GestureDetector(
                       key: const ValueKey('send'),
@@ -326,7 +364,11 @@ class _ChatPageState extends State<ChatPage> {
                           shape: BoxShape.circle,
                         ),
                         child: const Center(
-                          child: FaIcon(FontAwesomeIcons.paperPlane, size: 18, color: Colors.white),
+                          child: PhosphorIcon(
+                            PhosphorIconsRegular.paperPlaneTilt,
+                            size: 18,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     )
@@ -341,7 +383,11 @@ class _ChatPageState extends State<ChatPage> {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: FaIcon(FontAwesomeIcons.microphone, size: 18, color: theme.primaryColor),
+                          child: PhosphorIcon(
+                            PhosphorIconsRegular.microphone,
+                            size: 18,
+                            color: theme.primaryColor,
+                          ),
                         ),
                       ),
                     ),

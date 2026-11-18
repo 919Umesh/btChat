@@ -53,7 +53,10 @@ class LocalDbDataSourceImpl implements LocalDbDataSource {
       AppConstants.conversationsTable,
       orderBy: 'last_message_at DESC',
     );
-    return List.generate(maps.length, (i) => ConversationModel.fromMap(maps[i]));
+    return List.generate(
+      maps.length,
+      (i) => ConversationModel.fromMap(maps[i]),
+    );
   }
 
   @override
@@ -81,13 +84,13 @@ class LocalDbDataSourceImpl implements LocalDbDataSource {
       );
     });
   }
-  
+
   @override
   Future<List<MessageModel>> getUnsentMessages(String conversationId) async {
-     final List<Map<String, dynamic>> maps = await db.query(
+    final List<Map<String, dynamic>> maps = await db.query(
       AppConstants.messagesTable,
-      where: 'conversation_id = ? AND status = ?',
-      whereArgs: [conversationId, 'sending'],
+      where: 'conversation_id = ? AND status IN (?, ?)',
+      whereArgs: [conversationId, 'sending', 'failed'],
       orderBy: 'timestamp ASC',
     );
     return List.generate(maps.length, (i) => MessageModel.fromMap(maps[i]));

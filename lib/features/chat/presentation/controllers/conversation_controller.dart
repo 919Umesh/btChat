@@ -17,6 +17,7 @@ class ConversationController extends ChangeNotifier {
   StreamSubscription? _receiveSub;
   StreamSubscription<List<AppBluetoothDevice>>? _presenceSub;
   Timer? _presenceTimer;
+  final Set<String> _onlinePeerIds = {};
   final Set<String> _onlinePeerNames = {};
 
   ConversationController({
@@ -34,7 +35,8 @@ class ConversationController extends ChangeNotifier {
     _startPresenceMonitoring();
   }
 
-  bool isPeerOnline(String peerName) =>
+  bool isPeerOnline(String peerId, String peerName) =>
+      _onlinePeerIds.contains(_normalizePeerId(peerId)) ||
       _onlinePeerNames.contains(_normalizePeerName(peerName));
 
   void _startPresenceMonitoring() {
@@ -47,17 +49,28 @@ class ConversationController extends ChangeNotifier {
 
   Future<void> _scanPresence() async {
     await _presenceSub?.cancel();
+    _onlinePeerIds.clear();
     _onlinePeerNames.clear();
     notifyListeners();
     _presenceSub = scanDevices().listen((devices) {
+      final knownIds = _conversations
+          .map((conversation) => _normalizePeerId(conversation.peerId))
+          .toSet();
       final knownNames = _conversations
           .map((conversation) => _normalizePeerName(conversation.peerName))
           .toSet();
+      final chatDevices = devices.where((device) => device.isChatSupported);
+      _onlinePeerIds
+        ..clear()
+        ..addAll(
+          chatDevices
+              .map((device) => _normalizePeerId(device.id))
+              .where(knownIds.contains),
+        );
       _onlinePeerNames
         ..clear()
         ..addAll(
-          devices
-              .where((device) => device.isChatSupported)
+          chatDevices
               .map((device) => _normalizePeerName(device.name))
               .where(knownNames.contains),
         );
@@ -66,6 +79,7 @@ class ConversationController extends ChangeNotifier {
   }
 
   String _normalizePeerName(String name) => name.trim().toLowerCase();
+  String _normalizePeerId(String id) => id.trim().toUpperCase();
 
   List<Conversation> _conversations = [];
   List<Conversation> get conversations => _conversations;

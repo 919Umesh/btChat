@@ -27,30 +27,31 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
   final _receiveController = StreamController<Map<String, dynamic>>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
   bool _isConnected = false;
-  
+
   String _messageBuffer = '';
 
   BluetoothChatDataSourceImpl({required this.peripheral}) {
-    // Listen to messages received by our native GATT Server
     _peripheralMsgSub = peripheral.incomingMessages.listen((msg) {
       _receiveController.add(msg);
     });
 
-    // Listen to incoming client connections to our peripheral
-    _peripheralClientConnectedSub = peripheral.clientConnectedStream.listen((_) {
+    _peripheralClientConnectedSub = peripheral.clientConnectedStream.listen((
+      _,
+    ) {
       _connectionController.add(true);
     });
 
-    _peripheralClientDisconnectedSub = peripheral.clientDisconnectedStream.listen((_) {
-      if (_device == null) {
-        _connectionController.add(false);
-      }
-    });
+    _peripheralClientDisconnectedSub = peripheral.clientDisconnectedStream
+        .listen((_) {
+          if (_device == null) {
+            _connectionController.add(false);
+          }
+        });
   }
 
   @override
   Stream<Map<String, dynamic>> get receiveStream => _receiveController.stream;
-  
+
   @override
   Stream<bool> get connectionStateStream async* {
     yield _isConnected;
@@ -60,7 +61,7 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
   @override
   Future<void> connect(String deviceId) async {
     _device = BluetoothDevice.fromId(deviceId);
-    
+
     // Listen to connection state
     _connectionSub?.cancel();
     _connectionSub = _device!.connectionState.listen((state) {
@@ -76,8 +77,7 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
     try {
       await _device!.connect(autoConnect: false);
       await _device!.discoverServices();
-      
-      // Find chat characteristics (matches both 128-bit and 16-bit UUID forms)
+
       final targetService = AppConstants.chatServiceUuid.toLowerCase();
       final targetChar = AppConstants.chatCharacteristicUuid.toLowerCase();
 
@@ -94,26 +94,31 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
           }
         }
       }
-      
-      if (_readCharacteristic != null && _readCharacteristic!.properties.notify) {
+
+      if (_readCharacteristic != null &&
+          _readCharacteristic!.properties.notify) {
         await _readCharacteristic!.setNotifyValue(true);
         _notifySub = _readCharacteristic!.lastValueStream.listen((value) {
-           if(value.isNotEmpty) {
-             final str = utf8.decode(value);
-             _messageBuffer += str;
-             if (_messageBuffer.contains('\n')) {
-                final messages = _messageBuffer.split('\n');
-                for (int i=0; i<messages.length-1; i++) {
-                   try {
-                     final json = jsonDecode(messages[i]);
-                     _receiveController.add(json);
-                   } catch(e) {
-                     // ignore malformed
-                   }
+          if (value.isNotEmpty) {
+            final str = utf8.decode(value);
+            _messageBuffer += str;
+            if (_messageBuffer.contains('\n')) {
+              final messages = _messageBuffer.split('\n');
+              for (int i = 0; i < messages.length - 1; i++) {
+                try {
+                  final json = jsonDecode(messages[i]) as Map<String, dynamic>;
+                  json['senderId'] =
+                      _device?.remoteId.toString() ??
+                      json['senderId'] ??
+                      'peer';
+                  _receiveController.add(json);
+                } catch (e) {
+                  // ignore malformed
                 }
-                _messageBuffer = messages.last;
-             }
-           }
+              }
+              _messageBuffer = messages.last;
+            }
+          }
         });
       }
     } catch (e) {

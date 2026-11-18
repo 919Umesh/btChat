@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../domain/entities/message.dart';
 import '../../../../core/utils/date_extensions.dart';
 
@@ -15,18 +15,18 @@ class MessageBubble extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    FaIconData? statusIcon;
+    PhosphorIconData? statusIcon;
     Color statusColor = Colors.white70;
 
     if (isMe) {
       if (message.status == MessageStatus.sent) {
-        statusIcon = FontAwesomeIcons.checkDouble;
+        statusIcon = PhosphorIconsRegular.checks;
         statusColor = Colors.white70;
       } else if (message.status == MessageStatus.failed) {
-        statusIcon = FontAwesomeIcons.circleExclamation;
+        statusIcon = PhosphorIconsRegular.warningCircle;
         statusColor = Colors.red.shade200;
       } else if (message.status == MessageStatus.sending) {
-        statusIcon = FontAwesomeIcons.clock;
+        statusIcon = PhosphorIconsRegular.clock;
         statusColor = Colors.white54;
       }
     }
@@ -46,8 +46,12 @@ class MessageBubble extends StatelessWidget {
               ? theme.primaryColor
               : (isDark ? const Color(0xFF253341) : const Color(0xFFF0F3F5)),
           borderRadius: BorderRadius.circular(18).copyWith(
-            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
-            bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
+            bottomRight: isMe
+                ? const Radius.circular(4)
+                : const Radius.circular(18),
+            bottomLeft: isMe
+                ? const Radius.circular(18)
+                : const Radius.circular(4),
           ),
           boxShadow: [
             BoxShadow(
@@ -86,7 +90,7 @@ class MessageBubble extends StatelessWidget {
                 ),
                 if (isMe && statusIcon != null) ...[
                   const SizedBox(width: 4),
-                  FaIcon(statusIcon, size: 10, color: statusColor),
+                  PhosphorIcon(statusIcon, size: 10, color: statusColor),
                 ],
               ],
             ),
