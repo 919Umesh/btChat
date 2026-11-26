@@ -1,74 +1,120 @@
 # BT Chat
 
-BT Chat is a Flutter peer-to-peer messaging app. It discovers nearby Bluetooth Low Energy (BLE) devices, connects to a peer, and exchanges text messages without requiring an internet connection. Conversations and message history are stored locally on the device.
+A peer-to-peer messaging app built with Flutter and Bluetooth Low Energy (BLE). Discover nearby devices, connect, and exchange text messages — no internet required. All conversations are stored locally on-device.
 
 ## Features
 
-- Scan for nearby BLE devices and connect to a peer.
-- Send and receive text messages over a Bluetooth connection.
-- View recent conversations and reopen a chat.
-- Keep local conversation and message history in SQLite.
-- Retry messages that fail to send and delete a conversation's local history.
-- Light and dark Material themes.
+- **BLE Discovery & Connection** — Scan for nearby devices and connect directly over Bluetooth Low Energy.
+- **Real-time Messaging** — Send and receive text messages with delivery status indicators (sending, sent, failed).
+- **Offline Persistence** — Conversations and messages stored locally in SQLite with automatic retry for failed messages.
+- **Smart Device Recognition** — Name-based conversation IDs handle BLE address rotation (iOS), so reconnecting to the same device resumes the existing conversation.
+- **App Lifecycle Awareness** — BLE advertising starts/stops automatically when the app enters foreground/background.
+- **Swipe to Delete** — Remove conversations with a swipe gesture and confirmation dialog.
+- **Dark Mode** — Premium dark theme with indigo-violet accent palette.
 
-The image button in the chat composer is currently a placeholder; only text messaging is implemented.
+## Screenshots
+
+The app features a modern design system with:
+- Gradient avatars with online status indicators
+- iMessage-style chat bubbles (75% max width, asymmetric border radius)
+- Animated scanning state with pulse radar effect
+- Signal strength indicators on discovered devices
+- Onboarding-style permissions page
 
 ## Requirements
 
-- Flutter SDK compatible with the Dart SDK constraint in `pubspec.yaml` (`^3.10.7`).
-- Android or iOS device with Bluetooth Low Energy support. Bluetooth features should be exercised on physical devices; simulator support may be limited.
-- Bluetooth enabled and the requested Bluetooth/location permissions granted.
+- Flutter SDK (`^3.10.7`)
+- Android or iOS physical device with BLE support (simulators have limited Bluetooth functionality)
+- Bluetooth enabled and required permissions granted
 
-## Run locally
+## Getting Started
 
 ```sh
+# Install dependencies
 flutter pub get
+
+# Run on a connected device
 flutter run
-```
 
-To choose a connected device explicitly:
-
-```sh
+# Or target a specific device
 flutter devices
 flutter run -d <device-id>
 ```
 
-On launch, grant the permissions requested by the app. From the Messages screen, choose the Bluetooth search or add button to scan, then tap a discovered peer to open a chat. The other device needs to be available and advertising for discovery and connection to work.
+On launch, grant the requested permissions. From the **Messages** screen, tap **New Chat** to scan for nearby devices, then tap a discovered peer to open a chat. The other device must have BT Chat open and advertising for discovery to work.
 
-## Platform notes
+## Platform Notes
 
-- **Android:** The app declares BLE scan/connect/advertise permissions and legacy Bluetooth/location permissions for older Android versions. Approve the runtime permissions when prompted and enable Bluetooth.
-- **iOS:** Bluetooth and location usage descriptions are present in `ios/Runner/Info.plist`. Approve the system prompts and enable Bluetooth.
+### Android
+- Declares BLE scan/connect/advertise permissions and legacy Bluetooth/location permissions for older Android versions.
+- Adaptive launcher icon with indigo-violet background.
 
-Permission and Bluetooth behavior can vary by OS version and device. The project currently requests location permission as part of device discovery.
+### iOS
+- Bluetooth and location usage descriptions in `ios/Runner/Info.plist`.
+- App icon with alpha channel removed for App Store compliance.
+
+Permission behavior varies by OS version. Location permission is required for BLE device scanning on both platforms.
 
 ## Architecture
 
-The code is organized by feature and follows a layered structure:
+Clean architecture with feature-based organization:
 
-```text
+```
 lib/
-  core/                 Routing, dependency injection, theme, shared utilities
-  features/
-    chat/
-      data/             Bluetooth and SQLite data sources, models, repository
-      domain/           Entities, repository contract, use cases
-      presentation/     Controllers, pages, widgets
-    devices/
-      data/             BLE discovery data source and repository
-      domain/           Device entity, repository contract, use cases
-      presentation/     Device scanning and permission screens
+├── core/
+│   ├── constants/        App-wide constants (DB version, table names)
+│   ├── di/               Dependency injection (GetIt)
+│   ├── router/           Navigation (GoRouter)
+│   ├── theme/            Material 3 theme with indigo-violet palette
+│   └── utils/            Avatar colors, date formatting
+├── features/
+│   ├── chat/
+│   │   ├── data/         BLE datasource, peripheral datasource, SQLite, repository impl
+│   │   ├── domain/       Entities (Message, Conversation), repository contract, use cases
+│   │   └── presentation/ Controllers, chat page, conversations page, message bubble
+│   └── devices/
+│       ├── data/         BLE discovery datasource, repository impl
+│       ├── domain/       Device entity, repository contract, use cases
+│       └── presentation/ Device scan page, permissions page
+└── main.dart             App entry with lifecycle management
 ```
 
-`get_it` wires dependencies, `provider` exposes controllers to the UI, `go_router` handles navigation, `flutter_blue_plus` provides BLE access, and `sqflite` stores chat data locally.
+### Key Dependencies
 
-## Useful commands
+| Package | Purpose |
+|---|---|
+| `flutter_blue_plus` | BLE GATT client connections |
+| `sqflite` | Local message & conversation storage |
+| `provider` | State management (ChangeNotifier) |
+| `get_it` | Service locator / dependency injection |
+| `go_router` | Declarative routing |
+| `fpdart` | Functional error handling (Either) |
+| `permission_handler` | Runtime permission requests |
+| `phosphor_flutter` | Icon set |
+
+### BLE Communication
+
+The app uses two BLE roles simultaneously:
+- **Central (Client)** — via `flutter_blue_plus` to discover and connect to peers.
+- **Peripheral (Server)** — via native `MethodChannel` (`com.example.chat_l/peripheral`) to advertise and accept incoming connections.
+
+Messages are chunked for BLE MTU limits, reassembled on receive, and include the sender's device name in the payload for proper attribution.
+
+## Build
 
 ```sh
+# Static analysis
 flutter analyze
-flutter test
-flutter build apk
-flutter build ios
-```
 
-An iOS build requires macOS and Xcode. Tests and builds should be run in an environment with the Flutter toolchain and the required platform tooling installed.
+# Run tests
+flutter test
+
+# Build APK
+flutter build apk
+
+# Build iOS (requires macOS + Xcode)
+flutter build ios
+
+# Regenerate app icons
+dart run flutter_launcher_icons
+```
