@@ -136,7 +136,7 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<void> _retryUnsent() async {
-    await retryFailedMessages(_currentPeerId);
+    await retryFailedMessages(_conversationId);
     if (_disposed) return;
     await loadMessages();
   }

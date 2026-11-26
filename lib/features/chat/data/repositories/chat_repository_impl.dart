@@ -7,15 +7,21 @@ import '../../domain/entities/conversation.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/local_db_datasource.dart';
 import '../datasources/bluetooth_chat_datasource.dart';
+import '../datasources/ble_peripheral_datasource.dart';
 import '../models/message_model.dart';
 import '../models/conversation_model.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   final LocalDbDataSource localDb;
   final BluetoothChatDataSource bluetoothChat;
+  final BlePeripheralDataSource peripheral;
   final _uuid = const Uuid();
 
-  ChatRepositoryImpl({required this.localDb, required this.bluetoothChat});
+  ChatRepositoryImpl({
+    required this.localDb,
+    required this.bluetoothChat,
+    required this.peripheral,
+  });
 
   @override
   Future<Either<Failure, void>> connectToPeer(String peerId) async {
@@ -66,11 +72,12 @@ class ChatRepositoryImpl implements ChatRepository {
         conversationId: conversationId,
       );
 
-      // Try send
+      // Try send — include OUR device name so receiver knows who sent it
       try {
+        final senderName = await peripheral.getDeviceName();
         await bluetoothChat.sendMessage({
           ...msg.toJsonPayload(),
-          'peerName': peerName,
+          'senderName': senderName,
         });
         final sentMsg = MessageModel(
           id: msg.id,
@@ -157,7 +164,7 @@ class ChatRepositoryImpl implements ChatRepository {
     }
     await localDb.saveConversation(
       ConversationModel(
-        id: conversationId ?? _conversationId(peerId, peerName),
+        id: conversationId ?? _conversationId(peerId, resolvedName),
         peerId: peerId,
         peerName: resolvedName,
         lastMessage: content,
@@ -240,10 +247,10 @@ class ChatRepositoryImpl implements ChatRepository {
   Stream<Message> receiveMessages() {
     return bluetoothChat.receiveStream.asyncMap((payload) async {
       final raw = MessageModel.fromJsonPayload(payload);
-      final payloadName = payload['peerName'] as String?;
+      final senderName = payload['senderName'] as String?;
       var peerName = await _resolvePeerName(
         raw.senderId,
-        payloadName ?? 'Unknown',
+        senderName ?? 'Unknown',
       );
       final conversationId = _conversationId(raw.senderId, peerName);
       final msg = MessageModel(
@@ -294,9 +301,13 @@ class ChatRepositoryImpl implements ChatRepository {
   ) async {
     try {
       final unsent = await localDb.getUnsentMessages(conversationId);
+      final senderName = await peripheral.getDeviceName();
       for (var msg in unsent) {
         try {
-          await bluetoothChat.sendMessage(msg.toJsonPayload());
+          await bluetoothChat.sendMessage({
+            ...msg.toJsonPayload(),
+            'senderName': senderName,
+          });
           await localDb.updateMessageStatus(msg.id, 'sent');
         } catch (e) {
           await localDb.updateMessageStatus(msg.id, 'failed');

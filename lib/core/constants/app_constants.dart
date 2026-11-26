@@ -1,6 +1,6 @@
 class AppConstants {
   static const String dbName = 'bt_chat.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 2;
   static const String messagesTable = 'messages';
   static const String conversationsTable = 'conversations';
   

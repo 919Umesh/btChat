@@ -20,9 +20,8 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
   BluetoothCharacteristic? _readCharacteristic;
   StreamSubscription? _connectionSub;
   StreamSubscription? _notifySub;
-  StreamSubscription? _peripheralMsgSub;
-  StreamSubscription? _peripheralClientConnectedSub;
-  StreamSubscription? _peripheralClientDisconnectedSub;
+  final List<StreamSubscription> _peripheralSubs = [];
+
 
   final _receiveController = StreamController<Map<String, dynamic>>.broadcast();
   final _connectionController = StreamController<bool>.broadcast();
@@ -31,22 +30,19 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
   String _messageBuffer = '';
 
   BluetoothChatDataSourceImpl({required this.peripheral}) {
-    _peripheralMsgSub = peripheral.incomingMessages.listen((msg) {
+    _peripheralSubs.add(peripheral.incomingMessages.listen((msg) {
       _receiveController.add(msg);
-    });
+    }));
 
-    _peripheralClientConnectedSub = peripheral.clientConnectedStream.listen((
-      _,
-    ) {
+    _peripheralSubs.add(peripheral.clientConnectedStream.listen((_) {
       _connectionController.add(true);
-    });
+    }));
 
-    _peripheralClientDisconnectedSub = peripheral.clientDisconnectedStream
-        .listen((_) {
-          if (_device == null) {
-            _connectionController.add(false);
-          }
-        });
+    _peripheralSubs.add(peripheral.clientDisconnectedStream.listen((_) {
+      if (_device == null) {
+        _connectionController.add(false);
+      }
+    }));
   }
 
   @override
@@ -60,6 +56,10 @@ class BluetoothChatDataSourceImpl implements BluetoothChatDataSource {
 
   @override
   Future<void> connect(String deviceId) async {
+    if (_device != null) {
+      await disconnect();
+    }
+    _messageBuffer = '';
     _device = BluetoothDevice.fromId(deviceId);
 
     // Listen to connection state

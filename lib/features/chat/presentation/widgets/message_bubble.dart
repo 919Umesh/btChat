@@ -13,88 +13,99 @@ class MessageBubble extends StatelessWidget {
     final isMe = message.isMine;
     final timeStr = message.timestamp.toChatTime();
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
     PhosphorIconData? statusIcon;
-    Color statusColor = Colors.white70;
+    Color statusColor = Colors.white60;
 
     if (isMe) {
-      if (message.status == MessageStatus.sent) {
-        statusIcon = PhosphorIconsRegular.checks;
-        statusColor = Colors.white70;
-      } else if (message.status == MessageStatus.failed) {
-        statusIcon = PhosphorIconsRegular.warningCircle;
-        statusColor = Colors.red.shade200;
-      } else if (message.status == MessageStatus.sending) {
-        statusIcon = PhosphorIconsRegular.clock;
-        statusColor = Colors.white54;
+      switch (message.status) {
+        case MessageStatus.sent:
+          statusIcon = PhosphorIconsRegular.checks;
+          statusColor = Colors.white60;
+          break;
+        case MessageStatus.failed:
+          statusIcon = PhosphorIconsRegular.warningCircle;
+          statusColor = Colors.red.shade200;
+          break;
+        case MessageStatus.sending:
+          statusIcon = PhosphorIconsRegular.clock;
+          statusColor = Colors.white38;
+          break;
       }
     }
 
+    final bubbleColor = isMe
+        ? colorScheme.primary
+        : isDark
+            ? colorScheme.surfaceContainerHighest
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.7);
+
+    final textColor = isMe
+        ? Colors.white
+        : colorScheme.onSurface;
+
+    final metaColor = isMe
+        ? Colors.white.withValues(alpha: 0.55)
+        : colorScheme.onSurface.withValues(alpha: 0.38);
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.only(
-          top: 2,
-          bottom: 2,
-          left: isMe ? 60 : 0,
-          right: isMe ? 0 : 60,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isMe
-              ? theme.primaryColor
-              : (isDark ? const Color(0xFF253341) : const Color(0xFFF0F3F5)),
-          borderRadius: BorderRadius.circular(18).copyWith(
-            bottomRight: isMe
-                ? const Radius.circular(4)
-                : const Radius.circular(18),
-            bottomLeft: isMe
-                ? const Radius.circular(18)
-                : const Radius.circular(4),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(18),
+              topRight: const Radius.circular(18),
+              bottomLeft: Radius.circular(isMe ? 18 : 6),
+              bottomRight: Radius.circular(isMe ? 6 : 18),
+            ),
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              message.content,
-              style: TextStyle(
-                fontSize: 15,
-                height: 1.4,
-                color: isMe
-                    ? Colors.white
-                    : (isDark ? Colors.white : const Color(0xFF14171A)),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  timeStr,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isMe
-                        ? Colors.white60
-                        : (isDark ? Colors.grey.shade500 : Colors.black38),
-                  ),
+          child: Column(
+            crossAxisAlignment:
+                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                message.content,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.35,
+                  color: textColor,
                 ),
-                if (isMe && statusIcon != null) ...[
-                  const SizedBox(width: 4),
-                  PhosphorIcon(statusIcon, size: 10, color: statusColor),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    timeStr,
+                    style: TextStyle(fontSize: 10, color: metaColor),
+                  ),
+                  if (isMe && statusIcon != null) ...[
+                    const SizedBox(width: 3),
+                    PhosphorIcon(statusIcon, size: 10, color: statusColor),
+                  ],
                 ],
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

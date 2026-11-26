@@ -19,6 +19,7 @@ class ConversationController extends ChangeNotifier {
   Timer? _presenceTimer;
   final Set<String> _onlinePeerIds = {};
   final Set<String> _onlinePeerNames = {};
+  bool _disposed = false;
 
   ConversationController({
     required this.getConversations,
@@ -27,6 +28,10 @@ class ConversationController extends ChangeNotifier {
     required this.scanDevices,
     required this.stopScan,
   });
+
+  void _safeNotify() {
+    if (!_disposed) notifyListeners();
+  }
 
   void startListening() {
     _receiveSub ??= receiveMessagesStream().listen((_) {
@@ -51,7 +56,7 @@ class ConversationController extends ChangeNotifier {
     await _presenceSub?.cancel();
     _onlinePeerIds.clear();
     _onlinePeerNames.clear();
-    notifyListeners();
+    _safeNotify();
     _presenceSub = scanDevices().listen((devices) {
       final knownIds = _conversations
           .map((conversation) => _normalizePeerId(conversation.peerId))
@@ -74,7 +79,7 @@ class ConversationController extends ChangeNotifier {
               .map((device) => _normalizePeerName(device.name))
               .where(knownNames.contains),
         );
-      notifyListeners();
+      _safeNotify();
     });
   }
 
@@ -89,16 +94,17 @@ class ConversationController extends ChangeNotifier {
 
   Future<void> loadConversations() async {
     _isLoading = true;
-    notifyListeners();
+    _safeNotify();
 
     final result = await getConversations();
+    if (_disposed) return;
     result.fold(
       (f) => debugPrint(f.message),
       (convs) => _conversations = convs,
     );
 
     _isLoading = false;
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> deleteConversation(String id) async {
@@ -108,6 +114,7 @@ class ConversationController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _receiveSub?.cancel();
     _presenceSub?.cancel();
     _presenceTimer?.cancel();

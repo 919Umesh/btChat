@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/message_bubble.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/avatar_utils.dart';
 
 class ChatPage extends StatefulWidget {
   final String peerId;
@@ -20,6 +21,7 @@ class _ChatPageState extends State<ChatPage> {
   final _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _showSendButton = false;
+  int _lastMessageCount = 0;
 
   @override
   void initState() {
@@ -64,9 +66,10 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initial = widget.peerName.isNotEmpty
-        ? widget.peerName.substring(0, 1).toUpperCase()
-        : '?';
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final initial = AvatarUtils.initialFor(widget.peerName);
+    final gradientColors = AvatarUtils.gradientForName(widget.peerName);
 
     return ChangeNotifierProvider.value(
       value: _controller,
@@ -74,22 +77,18 @@ class _ChatPageState extends State<ChatPage> {
         appBar: AppBar(
           titleSpacing: 0,
           leading: IconButton(
-            icon: const PhosphorIcon(PhosphorIconsRegular.arrowLeft, size: 18),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           title: Row(
             children: [
-              // Gradient avatar
               Container(
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [
-                      theme.primaryColor,
-                      theme.primaryColor.withValues(alpha: 0.6),
-                    ],
+                    colors: gradientColors,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -98,90 +97,88 @@ class _ChatPageState extends State<ChatPage> {
                   child: Text(
                     initial,
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.peerName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.peerName,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Consumer<ChatController>(
-                    builder: (context, controller, _) {
-                      final isConnected = controller.isConnected;
-                      final isConnecting = controller.isConnecting;
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isConnected
-                                  ? Colors.green
-                                  : isConnecting
-                                  ? Colors.orange
-                                  : Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isConnecting
-                                ? 'Connecting...'
-                                : isConnected
+                    Consumer<ChatController>(
+                      builder: (context, controller, _) {
+                        final isConnected = controller.isConnected;
+                        final isConnecting = controller.isConnecting;
+                        final label = isConnecting
+                            ? 'Connecting…'
+                            : isConnected
                                 ? 'Connected'
-                                : 'Offline',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.normal,
-                              color: isConnected
-                                  ? Colors.green
-                                  : isConnecting
-                                  ? Colors.orange
-                                  : Colors.grey,
+                                : 'Offline';
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isConnected
+                                    ? const Color(0xFF34C759)
+                                    : isConnecting
+                                        ? const Color(0xFFFFCC00)
+                                        : colorScheme.outline.withValues(alpha: 0.5),
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+                            const SizedBox(width: 4),
+                            Text(
+                              label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                                color: colorScheme.onSurface.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           actions: [
             Consumer<ChatController>(
               builder: (context, controller, _) {
-                if (controller.isConnected || controller.isConnecting) {
-                  return IconButton(
-                    tooltip: 'Disconnect',
-                    icon: PhosphorIcon(
-                      PhosphorIconsRegular.bluetoothConnected,
-                      size: 18,
-                      color: theme.primaryColor,
-                    ),
-                    onPressed: () => controller.disconnect(),
-                  );
-                }
+                final connected = controller.isConnected || controller.isConnecting;
                 return IconButton(
-                  tooltip: 'Connect',
-                  icon: const PhosphorIcon(
-                    PhosphorIconsRegular.bluetooth,
+                  tooltip: connected ? 'Disconnect' : 'Connect',
+                  icon: PhosphorIcon(
+                    connected
+                        ? PhosphorIconsRegular.bluetoothConnected
+                        : PhosphorIconsRegular.bluetooth,
                     size: 18,
+                    color: connected
+                        ? colorScheme.primary
+                        : colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
-                  onPressed: () => controller.connect(widget.peerId),
+                  onPressed: () => connected
+                      ? controller.disconnect()
+                      : controller.connect(widget.peerId),
                 );
               },
             ),
@@ -190,42 +187,37 @@ class _ChatPageState extends State<ChatPage> {
         ),
         body: Consumer<ChatController>(
           builder: (context, controller, _) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _scrollToBottom(),
-            );
+            if (controller.messages.length != _lastMessageCount) {
+              _lastMessageCount = controller.messages.length;
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _scrollToBottom(),
+              );
+            }
+
+            if (controller.error != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context)
+                  ..clearSnackBars()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        controller.error!,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+              });
+            }
+
             return Column(
               children: [
-                // Error banner
-                if (controller.error != null)
-                  Container(
-                    color: Colors.redAccent,
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        const PhosphorIcon(
-                          PhosphorIconsRegular.warningCircle,
-                          size: 14,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            controller.error!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Messages list
                 Expanded(
                   child: controller.messages.isEmpty
                       ? Center(
@@ -233,25 +225,17 @@ class _ChatPageState extends State<ChatPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               PhosphorIcon(
-                                PhosphorIconsRegular.chatSlash,
-                                size: 48,
-                                color: Colors.grey.shade300,
+                                PhosphorIconsRegular.chatCircleDots,
+                                size: 40,
+                                color: colorScheme.onSurface.withValues(alpha: 0.12),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 12),
                               Text(
-                                'No messages yet',
+                                'Start a conversation',
                                 style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade400,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Say hello to ${widget.peerName}!',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade400,
+                                  color: colorScheme.onSurface.withValues(alpha: 0.3),
                                 ),
                               ),
                             ],
@@ -260,8 +244,8 @@ class _ChatPageState extends State<ChatPage> {
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 16,
+                            horizontal: 16,
+                            vertical: 12,
                           ),
                           itemCount: controller.messages.length,
                           itemBuilder: (context, index) {
@@ -270,9 +254,7 @@ class _ChatPageState extends State<ChatPage> {
                           },
                         ),
                 ),
-
-                // Input bar
-                _buildMessageInput(controller),
+                _buildMessageInput(isDark, colorScheme),
               ],
             );
           },
@@ -281,116 +263,82 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageInput(ChatController controller) {
-    final theme = Theme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildMessageInput(bool isDark, ColorScheme colorScheme) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF14171A) : Colors.white,
+        color: colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: isDark ? const Color(0xFF38444D) : const Color(0xFFE1E8ED),
-            width: 1,
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Text field
             Expanded(
               child: Container(
                 constraints: const BoxConstraints(maxHeight: 120),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? const Color(0xFF253341)
-                      : const Color(0xFFF5F8FA),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF38444D)
-                        : const Color(0xFFE1E8ED),
-                  ),
+                      ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                      : colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(22),
                 ),
                 child: TextField(
                   controller: _textController,
                   maxLines: null,
                   keyboardType: TextInputType.multiline,
                   textCapitalization: TextCapitalization.sentences,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: colorScheme.onSurface,
+                  ),
                   decoration: InputDecoration(
-                    hintText: 'Message ${widget.peerName}…',
+                    hintText: 'Message…',
                     hintStyle: TextStyle(
-                      color: isDark
-                          ? Colors.grey.shade600
-                          : Colors.grey.shade400,
+                      color: colorScheme.onSurface.withValues(alpha: 0.35),
                       fontSize: 15,
                     ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 12,
+                      horizontal: 16,
+                      vertical: 10,
                     ),
                   ),
                   onSubmitted: (_) => _sendMessage(),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            // Send / mic button
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, anim) =>
-                  ScaleTransition(scale: anim, child: child),
-              child: _showSendButton
-                  ? GestureDetector(
-                      key: const ValueKey('send'),
-                      onTap: _sendMessage,
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: theme.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: PhosphorIcon(
-                            PhosphorIconsRegular.paperPlaneTilt,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    )
-                  : GestureDetector(
-                      key: const ValueKey('mic'),
-                      onTap: () {},
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: theme.primaryColor.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: PhosphorIcon(
-                            PhosphorIconsRegular.microphone,
-                            size: 18,
-                            color: theme.primaryColor,
-                          ),
-                        ),
+            const SizedBox(width: 6),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: AnimatedScale(
+                scale: _showSendButton ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: GestureDetector(
+                  onTap: _sendMessage,
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 20,
+                        color: Colors.white,
                       ),
                     ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

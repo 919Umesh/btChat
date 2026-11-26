@@ -60,6 +60,15 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   mockito: ^5.6.4
   build_runner: ^2.15.1
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#6C63FF"
+  adaptive_icon_foreground: "assets/app_icon.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

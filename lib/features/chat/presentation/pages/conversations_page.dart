@@ -7,6 +7,7 @@ import '../../data/datasources/ble_peripheral_datasource.dart';
 import '../../domain/entities/conversation.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/utils/date_extensions.dart';
+import '../../../../core/utils/avatar_utils.dart';
 
 class ConversationsPage extends StatefulWidget {
   const ConversationsPage({super.key});
@@ -16,11 +17,10 @@ class ConversationsPage extends StatefulWidget {
 }
 
 class _ConversationsPageState extends State<ConversationsPage>
-    with SingleTickerProviderStateMixin {
+    with WidgetsBindingObserver {
   late ConversationController _controller;
   String _deviceName = 'This device';
 
-  // Search state
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
@@ -28,25 +28,36 @@ class _ConversationsPageState extends State<ConversationsPage>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = sl<ConversationController>();
     _controller.startListening();
     _controller.loadConversations();
-    final peripheral = sl<BlePeripheralDataSource>();
-    peripheral.startAdvertising();
-    peripheral.getDeviceName().then((name) {
-      if (mounted && name.trim().isNotEmpty) {
-        setState(() => _deviceName = name.trim());
-      }
-    });
+    _loadDeviceName();
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
   }
 
+  Future<void> _loadDeviceName() async {
+    final name = await sl<BlePeripheralDataSource>().getDeviceName();
+    if (mounted && name.trim().isNotEmpty) {
+      setState(() => _deviceName = name.trim());
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
+    _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _controller.loadConversations();
+    }
   }
 
   void _startSearch() => setState(() => _isSearching = true);
@@ -65,62 +76,117 @@ class _ConversationsPageState extends State<ConversationsPage>
   }
 
   void _showProfileSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     showModalBottomSheet(
       context: context,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: Theme.of(
-                context,
-              ).primaryColor.withValues(alpha: 0.15),
-              child: PhosphorIcon(
-                PhosphorIconsRegular.user,
-                size: 34,
-                color: Theme.of(context).primaryColor,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.primary.withValues(alpha: 0.6),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Center(
+                  child: PhosphorIcon(
+                    PhosphorIconsRegular.user,
+                    size: 32,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Device Profile',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _deviceName,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            ListTile(
-              leading: PhosphorIcon(
-                PhosphorIconsRegular.bluetooth,
-                color: Theme.of(context).primaryColor,
+              const SizedBox(height: 16),
+              Text(
+                _deviceName,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
               ),
-              title: const Text('BT Chat'),
-              subtitle: const Text('Peer-to-peer Bluetooth messenger'),
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                'Bluetooth Chat Device',
+                style: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.5),
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIconsRegular.bluetooth,
+                      color: colorScheme.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Peer-to-Peer Messaging',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Encrypted via Bluetooth LE',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── AppBar ────────────────────────────────────────────────────────────────
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     if (_isSearching) {
       return AppBar(
         leading: IconButton(
-          icon: const PhosphorIcon(PhosphorIconsRegular.arrowLeft, size: 18),
+          icon: const PhosphorIcon(PhosphorIconsRegular.arrowLeft, size: 20),
           onPressed: _stopSearch,
         ),
         title: TextField(
@@ -128,20 +194,25 @@ class _ConversationsPageState extends State<ConversationsPage>
           autofocus: true,
           decoration: InputDecoration(
             hintText: 'Search conversations…',
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+            hintStyle: TextStyle(
+              color: colorScheme.onSurface.withValues(alpha: 0.35),
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
             border: InputBorder.none,
           ),
-          style: const TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+            color: colorScheme.onSurface,
+          ),
           textInputAction: TextInputAction.search,
         ),
         actions: [
           if (_query.isNotEmpty)
             IconButton(
-              icon: const PhosphorIcon(PhosphorIconsRegular.x, size: 16),
+              icon: const PhosphorIcon(PhosphorIconsRegular.x, size: 18),
               tooltip: 'Clear',
-              onPressed: () {
-                _searchController.clear();
-              },
+              onPressed: () => _searchController.clear(),
             ),
           const SizedBox(width: 4),
         ],
@@ -149,27 +220,39 @@ class _ConversationsPageState extends State<ConversationsPage>
     }
 
     return AppBar(
-      title: const Text('BT Chat'),
+      leadingWidth: 56,
       leading: GestureDetector(
         onTap: () => _showProfileSheet(context),
         child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: CircleAvatar(
-            backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
-            child: PhosphorIcon(
-              PhosphorIconsRegular.user,
-              color: theme.primaryColor,
-              size: 16,
+          padding: const EdgeInsets.only(left: 16),
+          child: Center(
+            child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.primary.withValues(alpha: 0.6),
+                  ],
+                ),
+              ),
+              child: const Center(
+                child: PhosphorIcon(
+                  PhosphorIconsRegular.user,
+                  color: Colors.white,
+                  size: 15,
+                ),
+              ),
             ),
           ),
         ),
       ),
+      title: const Text('Messages'),
       actions: [
         IconButton(
-          icon: const PhosphorIcon(
-            PhosphorIconsRegular.magnifyingGlass,
-            size: 17,
-          ),
+          icon: const PhosphorIcon(PhosphorIconsRegular.magnifyingGlass, size: 20),
           tooltip: 'Search',
           onPressed: _startSearch,
         ),
@@ -178,60 +261,65 @@ class _ConversationsPageState extends State<ConversationsPage>
     );
   }
 
-  // ── Body ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return ChangeNotifierProvider.value(
       value: _controller,
       child: Scaffold(
         appBar: _buildAppBar(context),
         body: Consumer<ConversationController>(
           builder: (context, controller, _) {
-            if (controller.isLoading) {
-              return const Center(child: CircularProgressIndicator());
+            if (controller.isLoading && controller.conversations.isEmpty) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: colorScheme.primary,
+                  strokeWidth: 2.5,
+                ),
+              );
             }
 
-            // ── Empty inbox (no conversations at all)
             if (controller.conversations.isEmpty) {
               return Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(32.0),
+                  padding: const EdgeInsets.all(40.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 96,
-                        height: 96,
+                        width: 88,
+                        height: 88,
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).primaryColor.withValues(alpha: 0.08),
+                          color: colorScheme.primary.withValues(alpha: 0.08),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: PhosphorIcon(
-                            PhosphorIconsRegular.chatCircle,
-                            size: 44,
-                            color: Theme.of(
-                              context,
-                            ).primaryColor.withValues(alpha: 0.4),
+                            PhosphorIconsRegular.chatCircleDots,
+                            size: 40,
+                            color: colorScheme.primary.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Welcome to your inbox!',
+                      const SizedBox(height: 24),
+                      Text(
+                        'No conversations yet',
                         style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Start a private Bluetooth conversation\nby tapping the button below.',
+                        'Find nearby devices and start\na private Bluetooth chat.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.grey.shade500,
+                          color: colorScheme.onSurface.withValues(alpha: 0.45),
+                          fontSize: 15,
                           height: 1.5,
                         ),
                       ),
@@ -243,7 +331,6 @@ class _ConversationsPageState extends State<ConversationsPage>
 
             final filtered = _filtered(controller.conversations);
 
-            // ── No search results
             if (filtered.isEmpty) {
               return Center(
                 child: Column(
@@ -251,15 +338,15 @@ class _ConversationsPageState extends State<ConversationsPage>
                   children: [
                     PhosphorIcon(
                       PhosphorIconsRegular.magnifyingGlass,
-                      size: 40,
-                      color: Colors.grey.shade300,
+                      size: 36,
+                      color: colorScheme.onSurface.withValues(alpha: 0.2),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No results for "$_query"',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade500,
+                        fontSize: 15,
+                        color: colorScheme.onSurface.withValues(alpha: 0.45),
                       ),
                     ),
                   ],
@@ -267,20 +354,20 @@ class _ConversationsPageState extends State<ConversationsPage>
               );
             }
 
-            // ── Conversation list
-            return ListView.separated(
+            return ListView.builder(
+              padding: const EdgeInsets.only(top: 4),
               itemCount: filtered.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(height: 1, indent: 72),
               itemBuilder: (context, index) {
                 final conv = filtered[index];
-                final initial = conv.peerName.isNotEmpty
-                    ? conv.peerName.substring(0, 1).toUpperCase()
-                    : '?';
-
-                return InkWell(
+                final isOnline = controller.isPeerOnline(
+                  conv.peerId,
+                  conv.peerName,
+                );
+                return _ConversationTile(
+                  conversation: conv,
+                  isOnline: isOnline,
+                  query: _query,
                   onTap: () {
-                    // Close search before navigating
                     _stopSearch();
                     context
                         .push(
@@ -288,180 +375,22 @@ class _ConversationsPageState extends State<ConversationsPage>
                         )
                         .then((_) => _controller.loadConversations());
                   },
-                  onLongPress: () {
-                    showDialog(
-                      context: context,
-                      builder: (c) => AlertDialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        title: const Text('Delete conversation?'),
-                        content: const Text(
-                          'This will permanently delete the chat history with this peer.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(c),
-                            child: const Text('Cancel'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              _controller.deleteConversation(conv.id);
-                              Navigator.pop(c);
-                            },
-                            child: const Text(
-                              'Delete',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 10.0,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Gradient avatar
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(
-                              colors: [
-                                Theme.of(context).primaryColor,
-                                Theme.of(
-                                  context,
-                                ).primaryColor.withValues(alpha: 0.6),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // Highlight matching text
-                                  Expanded(
-                                    child: _query.isEmpty
-                                        ? Text(
-                                            conv.peerName,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          )
-                                        : _HighlightText(
-                                            text: conv.peerName,
-                                            query: _query,
-                                          ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    conv.lastMessageAt.toConversationDate(),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          controller.isPeerOnline(
-                                            conv.peerId,
-                                            conv.peerName,
-                                          )
-                                          ? Colors.green
-                                          : Colors.grey,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    controller.isPeerOnline(
-                                          conv.peerId,
-                                          conv.peerName,
-                                        )
-                                        ? 'Online'
-                                        : 'Offline',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color:
-                                          controller.isPeerOnline(
-                                            conv.peerId,
-                                            conv.peerName,
-                                          )
-                                          ? Colors.green
-                                          : Colors.grey.shade600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      conv.lastMessage,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  onDelete: () => _controller.deleteConversation(conv.id),
                 );
               },
             );
           },
         ),
         floatingActionButton: _isSearching
-            ? null // hide FAB while searching
-            : FloatingActionButton(
+            ? null
+            : FloatingActionButton.extended(
                 onPressed: () => context
                     .push('/devices')
                     .then((_) => _controller.loadConversations()),
-                tooltip: 'New conversation',
-                child:  PhosphorIcon(
-                  PhosphorIconsRegular.plus,
-                  size: 22,
+                icon: const PhosphorIcon(PhosphorIconsRegular.plus, size: 18),
+                label: const Text(
+                  'New Chat',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
               ),
       ),
@@ -469,7 +398,185 @@ class _ConversationsPageState extends State<ConversationsPage>
   }
 }
 
-// ── Highlight widget ─────────────────────────────────────────────────────────
+class _ConversationTile extends StatelessWidget {
+  final Conversation conversation;
+  final bool isOnline;
+  final String query;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _ConversationTile({
+    required this.conversation,
+    required this.isOnline,
+    required this.query,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final gradientColors = AvatarUtils.gradientForName(conversation.peerName);
+    final initial = AvatarUtils.initialFor(conversation.peerName);
+
+    return Dismissible(
+      key: ValueKey(conversation.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('Delete conversation?'),
+            content: const Text(
+              'This will permanently delete the chat history.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 24),
+        color: Colors.red.shade400,
+        child: const PhosphorIcon(
+          PhosphorIconsRegular.trash,
+          color: Colors.white,
+          size: 22,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // Avatar with online dot
+              SizedBox(
+                width: 52,
+                height: 52,
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: gradientColors,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          initial,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isOnline)
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22C55E),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colorScheme.surface,
+                              width: 2.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: query.isEmpty
+                              ? Text(
+                                  conversation.peerName,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              : _HighlightText(
+                                  text: conversation.peerName,
+                                  query: query,
+                                ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          conversation.lastMessageAt.toConversationDate(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withValues(alpha: 0.35),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      conversation.lastMessage,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HighlightText extends StatelessWidget {
   final String text;
   final String query;
@@ -478,32 +585,30 @@ class _HighlightText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final lower = text.toLowerCase();
     final start = lower.indexOf(query);
+    final baseStyle = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: colorScheme.onSurface,
+    );
     if (start == -1) {
-      return Text(
-        text,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      );
+      return Text(text, style: baseStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
     }
     final end = start + query.length;
     return RichText(
       overflow: TextOverflow.ellipsis,
+      maxLines: 1,
       text: TextSpan(
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
+        style: baseStyle,
         children: [
           if (start > 0) TextSpan(text: text.substring(0, start)),
           TextSpan(
             text: text.substring(start, end),
             style: TextStyle(
-              color: Theme.of(context).primaryColor,
-              backgroundColor: Theme.of(
-                context,
-              ).primaryColor.withValues(alpha: 0.12),
+              color: colorScheme.primary,
+              backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
             ),
           ),
           if (end < text.length) TextSpan(text: text.substring(end)),

@@ -61,6 +61,16 @@ Future<void> init() async {
       await db.execute(
         'CREATE INDEX idx_messages_conv_time ON ${AppConstants.messagesTable} (conversation_id, timestamp)'
       );
+      await db.execute(
+        'CREATE INDEX idx_conversations_peer_id ON ${AppConstants.conversationsTable} (peer_id)'
+      );
+    },
+    onUpgrade: (db, oldVersion, newVersion) async {
+      if (oldVersion < 2) {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_conversations_peer_id ON ${AppConstants.conversationsTable} (peer_id)'
+        );
+      }
     },
   );
 
@@ -77,6 +87,7 @@ Future<void> init() async {
   sl.registerLazySingleton<ChatRepository>(() => ChatRepositoryImpl(
     localDb: sl(),
     bluetoothChat: sl(),
+    peripheral: sl(),
   ));
   sl.registerLazySingleton<DeviceRepository>(() => DeviceRepositoryImpl(
     discoverySource: sl(),
